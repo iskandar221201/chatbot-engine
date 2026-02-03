@@ -1,0 +1,25 @@
+{
+    "name": "ai-search-core",
+    "version": "1.0.0",
+    "description": "A generic, context-aware AI search engine library for any domain.",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "search",
+        "ai",
+        "context",
+        "fuzzy"
+    ],
+    "author": "X.ASKA",
+    "license": "MIT",
+    "dependencies": {
+        "fuse.js": "^7.0.0"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0"
+    }
+}

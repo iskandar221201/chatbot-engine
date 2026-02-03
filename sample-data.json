@@ -1,0 +1,51 @@
+[
+    {
+        "title": "Jasa Pembuatan Website",
+        "description": "Kami melayani pembuatan website landing page, e-commerce, dan profil perusahaan dengan desain modern.",
+        "answer": "Kami menyediakan jasa **Pembuatan Website** mulai dari Landing Page hingga E-Commerce. Desain kami fokus pada konversi tinggi.",
+        "url": "/layanan#web-dev",
+        "category": "Layanan",
+        "keywords": [
+            "web",
+            "website",
+            "bikin situs",
+            "online store",
+            "toko online"
+        ],
+        "price_numeric": 2500000,
+        "is_recommended": true
+    },
+    {
+        "title": "Digital Marketing",
+        "description": "Optimalkan bisnis Anda dengan iklan Meta Ads, Google Ads, dan pengelolaan media sosial profesional.",
+        "answer": "Layanan **Digital Marketing** kami mencakup iklan (Ads) dan manajemen konten sosmed untuk meningkatkan penjualan Anda.",
+        "url": "/layanan#marketing",
+        "category": "Layanan",
+        "keywords": [
+            "iklan",
+            "ads",
+            "promosi",
+            "marketing",
+            "sosmed",
+            "pemasaran"
+        ],
+        "price_numeric": 1500000
+    },
+    {
+        "title": "Hubungi Tim Support",
+        "description": "Butuh bantuan teknis atau konsultasi gratis? Hubungi admin kami sekarang.",
+        "answer": "Silakan hubungi tim kami untuk konsultasi gratis mengenai proyek Anda.",
+        "url": "/hubungi",
+        "category": "Kontak",
+        "keywords": [
+            "kontak",
+            "wa",
+            "whatsapp",
+            "admin",
+            "telepon",
+            "bantuan",
+            "tanya"
+        ],
+        "image_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400"
+    }
+]
