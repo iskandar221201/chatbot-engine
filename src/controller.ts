@@ -1,5 +1,6 @@
 import type { AssistantDataItem, AssistantResult, AssistantConfig, UISelectors } from "./types";
 import { AssistantEngine } from "./engine";
+import { SiteCrawler } from "./crawler";
 import { formatCurrency } from "./utils";
 
 export class AssistantController {
@@ -23,7 +24,30 @@ export class AssistantController {
 
         this.initElements();
         this.initEventListeners();
+        this.initElements();
+        this.initEventListeners();
         this.loadHistory();
+
+        this.initCrawler();
+    }
+
+    private async initCrawler() {
+        if (this.config.autoCrawl !== false && typeof window !== 'undefined') {
+            const crawler = new SiteCrawler(window.location.origin, {
+                maxDepth: this.config.crawlMaxDepth,
+                maxPages: this.config.crawlMaxPages,
+                ignorePatterns: this.config.crawlIgnorePatterns,
+                autoCrawl: this.config.autoCrawl
+            });
+
+            // Start crawling in background
+            crawler.crawlAll().then(pages => {
+                if (pages.length > 0) {
+                    this.engine.addData(pages);
+                    // console.log(`Assistant: Crawled ${pages.length} pages`);
+                }
+            });
+        }
     }
 
     private initElements() {

@@ -6,6 +6,10 @@ window.ASSISTANT_CONFIG = {
     // A. Contact Information
     whatsappNumber: '6281234567890',
 
+    // Auto-Discovery (New)
+    autoCrawl: true,
+    crawlMaxDepth: 2,
+
     // B. Sales Triggers (Multilingual Support)
     salesTriggers: {
         'beli': ['order', 'daftar', 'mau', 'booking', 'reservasi'],

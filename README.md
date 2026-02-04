@@ -10,6 +10,7 @@ This library transforms your static "Search Data" into a proactive sales assista
 - 🚀 **Hybrid Remote Mode**: Search locally for speed or fetch from multiple APIs in parallel (Laravel, CodeIgniter, etc.) with auto-merging.
 - 🎨 **Lush UI Components**: Includes a complete chat controller with badge animations, price comparison cards, and high-visibility CTAs.
 - 🔒 **Secure-by-Design**: Integrated support for custom Auth headers and Server-Side Proxy patterns.
+- 🕷️ **Site Crawler**: Auto-discovery module that crawls your website to find new products and content dynamically.
 
 ## Quick Start (Demo)
 

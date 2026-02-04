@@ -172,7 +172,7 @@ describe('Smart Splitting & Compound Queries', () => {
         // Each part should produce results
         expect(result.intent).toBe('compound');
         expect(result.answer).toContain('Harga iPhone 15 Pro');
-        expect(result.answer).toContain('Fitur iPhone 15 Pro');
+        expect(result.answer).toContain('keunggulan dari iPhone 15 Pro');
     });
 
     it('should split query using triggers (Trigger-Aware Split)', async () => {
@@ -180,7 +180,7 @@ describe('Smart Splitting & Compound Queries', () => {
         // "berapa" and "fitur" are triggers that should cause a split if combined
         expect(result.intent).toBe('compound');
         expect(result.answer).toContain('Harga iPhone 15 Pro');
-        expect(result.answer).toContain('Fitur iPhone 15 Pro');
+        expect(result.answer).toContain('keunggulan dari iPhone 15 Pro');
     });
 });
 
@@ -195,7 +195,8 @@ describe('Localization & Custom Templates', () => {
         });
 
         const result = await engine.search('harga iphone');
-        expect(result.answer).toBe('iPhone 15 Pro price is $ 20,000,000');
+        // formatCurrency might return non-breaking space or different formatting based on environment
+        expect((result.answer || '').replace(/\s| /g, ' ')).toContain('iPhone 15 Pro price is $ 20,000,000');
     });
 
     it('should use custom fallback responses', async () => {

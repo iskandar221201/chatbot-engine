@@ -218,6 +218,39 @@ echo $response; // Kirim balik hasil ke chatbot
 
 ---
 
+## 4. Site Crawler & Auto-Discovery 🕷️
+
+Library ini memiliki built-in **Site Crawler** yang secara otomatis menjelajahi website Anda untuk menemukan produk dan konten baru tanpa perlu update manual di `data.json`.
+
+### Konfigurasi Dasar
+Secara default, crawler aktif dan akan mencoba mengindeks halaman yang terhubung dari halaman utama.
+
+```typescript
+const config = {
+    // Crawler options
+    autoCrawl: true,          // Set false to disable
+    crawlMaxDepth: 2,         // Kedalaman link (Deep crawl)
+    crawlMaxPages: 50,        // Maksimal jumlah halaman yang discan
+    crawlIgnorePatterns: [    // Pola URL yang diabaikan
+        '/admin',
+        '/login',
+        '#',
+        /\.pdf$/i
+    ]
+};
+```
+
+### Cara Kerja
+1. Saat inisialisasi, **AssistantController** akan menjalankan crawler di background.
+2. Crawler akan mem-fetch konten halaman internal (Same-Origin).
+3. Konten (Title, Meta Description, Body Text) diekstrak dan dibersihkan.
+4. Data baru otomatis ditambahkan ke **AssistantEngine** agar bisa dicari user.
+
+> [!NOTE]
+> Crawler hanya berjalan pada mode browser (client-side) dan mengikuti aturan `Same-Origin Policy`. Pastikan halaman Anda dapat diakses via AJAX/Fetch.
+
+---
+
 ## 4. Scoring & Ranking Mechanism ⚖️
 
 Engine ini menggunakan sistem **Composite Scoring** (Fuzzy + NLP + Business Logic).
