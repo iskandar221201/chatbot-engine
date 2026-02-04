@@ -118,9 +118,9 @@ export class AssistantController {
         this.addUserMessage(query);
         this.showTyping();
 
-        setTimeout(() => {
+        setTimeout(async () => {
             this.hideTyping();
-            const result = this.engine.search(query);
+            const result = await this.engine.search(query);
             this.addAssistantMessage(query, result);
         }, 1000);
     }

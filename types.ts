@@ -26,6 +26,8 @@ export interface AssistantConfig {
     intentRules?: IntentRule[];
     whatsappNumber?: string;
     stemmingSuffixes?: string[];
+    searchMode?: 'local' | 'remote';
+    apiUrl?: string;
 }
 
 export interface IntentRule {

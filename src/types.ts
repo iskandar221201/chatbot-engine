@@ -56,4 +56,6 @@ export interface AIConfig {
         description?: number;
     };
     stemmingSuffixes?: string[]; // List of suffixes to strip (e.g. ['nya', 'kan'])
+    searchMode?: 'local' | 'remote';
+    apiUrl?: string;
 }
