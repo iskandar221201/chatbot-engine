@@ -33,12 +33,8 @@ export class AssistantEngine {
     private stemmer: Stemmer;
     private tokenizer: Tokenizer;
 
-    constructor(
-        searchData: AssistantDataItem[],
-        FuseClass: any = Fuse,
-        config: AssistantConfig = {}
-    ) {
-        this.searchData = searchData || [];
+    constructor(searchData: AssistantDataItem[], FuseClass: any = Fuse, config: AssistantConfig = {}) {
+        this.searchData = searchData;
         this.Fuse = FuseClass;
         this.config = {
             phoneticMap: {},
@@ -58,14 +54,6 @@ export class AssistantEngine {
         this.stemmer = new Stemmer();
         this.tokenizer = new Tokenizer();
 
-        this.initFuse();
-    }
-
-    /**
-     * Add new data entries to the engine dynamically
-     */
-    public addData(data: AssistantDataItem[]) {
-        this.searchData = [...this.searchData, ...data];
         this.initFuse();
     }
 

@@ -60,11 +60,6 @@ export interface AssistantConfig {
     searchMode?: 'local' | 'remote';
     apiUrl?: string | string[];
     apiHeaders?: Record<string, string>;
-    // Crawler configuration
-    autoCrawl?: boolean;
-    crawlMaxDepth?: number;
-    crawlMaxPages?: number;
-    crawlIgnorePatterns?: (string | RegExp)[];
     // Comparison configuration
     comparisonTriggers?: string[];
     comparisonLabels?: {
