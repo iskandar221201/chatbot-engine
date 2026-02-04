@@ -3,9 +3,8 @@ export interface SearchDataItem {
     description: string;
     category: string;
     keywords?: string[];
-    [key: string]: any; // Allow custom properties
+    [key: string]: any;
 }
-
 export interface SearchResult {
     results: SearchDataItem[];
     intent: string;
@@ -13,40 +12,34 @@ export interface SearchResult {
     context: SearchContext;
     stats: SearchStats;
 }
-
 export interface SearchContext {
     history: ConversationTurn[];
     lastTopic: string | null;
-    lastItemContext: string | null; // Generic "Item" instead of "Package"
-    userPreferences: Record<string, any>; // Generic preferences
+    lastItemContext: string | null;
+    userPreferences: Record<string, any>;
 }
-
 export interface ConversationTurn {
     role: 'user' | 'assistant';
     content: string;
     timestamp: number;
     intent?: string;
 }
-
 export interface SearchStats {
     totalQueries: number;
     intentCounts: Record<string, number>;
 }
-
 export interface IntentDefinition {
     name: string;
-    patterns: string[]; // Keywords or phrases
+    patterns: string[];
     boost?: number;
 }
-
 export interface BoostingRule {
     name?: string;
     condition: (item: SearchDataItem, context: SearchContext, intent: string) => boolean;
     score: number;
 }
-
 export interface AIConfig {
-    synonyms?: Record<string, string[] | string>; // Support simple map and array map
+    synonyms?: Record<string, string[] | string>;
     stopWords?: string[];
     intents?: IntentDefinition[];
     boostingRules?: BoostingRule[];
@@ -55,5 +48,5 @@ export interface AIConfig {
         keywords?: number;
         description?: number;
     };
-    stemmingSuffixes?: string[]; // List of suffixes to strip (e.g. ['nya', 'kan'])
+    stemmingSuffixes?: string[];
 }
