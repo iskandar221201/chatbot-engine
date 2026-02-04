@@ -6,11 +6,12 @@ This guide provides a comprehensive overview of how to configure and deploy the 
 
 ## 1. Architecture Overview
 
-The library is split into three main layers:
+The library is organized within the `src/` directory:
 
-- **Type System (`types.ts`)**: Defines the data structures for search items, results, and configuration.
-- **Engine Layer (`engine.ts`)**: Handles the "intelligence" – query preprocessing, phonetic auto-correct, semantic expansion, and composite scoring.
-- **Controller Layer (`controller.ts`)**: Manages the Chat UI, DOM events, and session persistence (`localStorage`).
+- **Type System (`src/types.ts`)**: Defines the data structures for search items, results, and configuration.
+- **Engine Layer (`src/engine.ts`)**: Handles the "intelligence" – query preprocessing, **Indonesian stemming**, phonetic auto-correct, semantic expansion, and **Dice Coefficient** scoring.
+- **Controller Layer (`src/controller.ts`)**: Manages the Chat UI, DOM events, and session persistence.
+- **Internal Libs (`src/lib/`)**: Contains bundled dependencies like `fuse.js`.
 
 ---
 
@@ -28,10 +29,34 @@ Your `data.json` must follow the `AssistantDataItem` interface.
     "category": "CategoryName",
     "keywords": ["key1", "key2"],
     "price_numeric": 1500000,
+    "sale_price": 1200000,
+    "badge_text": "Hot Deal",
+    "cta_label": "Beli Sekarang",
+    "cta_url": "https://wa.me/xxx",
     "image_url": "https://...",
     "is_recommended": true
   }
 ]
+```
+
+### 💰 Sales-Driven Mode (Core Feature)
+Chatbot ini dirancang untuk memaksimalkan konversi secara otomatis. 
+
+- **Automatic Recognition**: Mengenali maksud "beli", "harga", "promo" secara cerdas (Indonesian & English).
+- **Universal Triggers**: Bisa dikonfigurasi untuk bahasa lain (Arab, Mandarin, etc) lewat `salesTriggers`.
+- **Dynamic Badges**: Otomatis menampilkan tag **"Rekomendasi"** atau **"Hot Deal"** (dari `badge_text`).
+- **High-Conversion UI**: Menampilkan perbandingan harga (diskon) dan tombol **"Pesan Sekarang"** yang menonjol.
+
+#### 🛠️ Customizing Sales Triggers
+Jika landing page Anda menggunakan bahasa selain Indo/Inggris, tambahkan keyword baru:
+```typescript
+const config = {
+    salesTriggers: {
+        'beli': ['اشتري', 'order'], // Arabic + custom
+        'harga': ['كم السعر', 'budget'],
+        'promo': ['voucher', 'kode']
+    }
+};
 ```
 
 ---
@@ -68,9 +93,15 @@ entityDefinitions: {
 ```
 
 ### 🎯 Intent Rules
-The most powerful feature. Directs the engine to prioritize specific categories based on detected entities or tokens.
+Fitur paling powerful untuk mengarahkan user. Memaksa engine memprioritaskan kategori tertentu berdasarkan kata kunci atau entity yang terdeteksi.
 ```typescript
 intentRules: [
+    {
+        intent: "layanan_premium",
+        conditions: {
+            tokens: ["vip", "luxury", "eksklusif"],
+            entities: ["isPremium"]
+        }
     }
 ]
 ```
@@ -80,14 +111,80 @@ Anda bisa memilih untuk menjalankan pencarian secara lokal (Client-side) atau me
 
 ```typescript
 searchMode: 'remote', // Default: 'local'
-apiUrl: 'https://api.anda.com/search' // Diperlukan jika mode 'remote'
+apiUrl: [
+    'https://api.laravel-app.com/search',
+    'https://api.codeigniter-app.com/search'
+] // Bisa string tunggal atau Array of URLs
 ```
+> [!NOTE]
+> Jika menggunakan banyak URL, results akan digabung dan diranking ulang secara otomatis sesuai relevansi.
+
+### 🔒 Keamanan Produksi (Rekomendasi)
+Untuk keamanan maksimal agar API Key **tidak terekspos sama sekali** di browser, gunakan pattern **"Server-Side Proxy"**:
+
+1. **Browser** memanggil script PHP di domain yang sama (Tanpa API Key).
+2. **Script PHP** bertindak sebagai perantara yang menempelkan API Key dan memanggil API tujuan.
+
+#### Konfigurasi di Browser (Aman):
+```typescript
+const config = {
+    searchMode: 'remote',
+    apiUrl: '/api/assistant-proxy.php' // Panggil file lokal Anda sendiri
+    // Tidak butuh apiHeaders di sini!
+};
+```
+
+#### Isi file `assistant-proxy.php` (Server-side):
+```php
+<?php
+// 1. Verifikasi asal request (CORS)
+header("Access-Control-Allow-Origin: https://toko-anda.com");
+
+// 2. Ambil query dari browser
+$query = $_GET['q'] ?? '';
+
+// 3. Panggil API asli dengan SECRET KEY di sisi server
+$apiUrl = "https://api.internal-search.com/v1?q=" . urlencode($query);
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $apiUrl);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "X-API-Key: SUPER_SECRET_KEY_ANDA" // Kunci ini AMAN di server
+]);
+
+$response = curl_exec($ch);
+echo $response; // Kirim balik hasil ke chatbot
+```
+
 > [!TIP]
-> Gunakan mode `remote` jika data Anda sangat besar (ribuan baris) dan disimpan di database seperti MySQL atau PostgreSQL.
+> **Kesimpulan**: Gunakan `apiHeaders` hanya untuk kebutuhan testing atau internal. Untuk website live/produksi, selalu gunakan **Server-Side Proxy** di atas agar data dan kunci Anda tetap privat.
 
 ---
 
-## 4. UI Implementation
+## 4. Scoring & Ranking Mechanism ⚖️
+
+Engine ini menggunakan sistem **Composite Scoring** (Fuzzy + NLP + Business Logic).
+
+### Komponen Skor Utama:
+1. **Fuzzy Base (Fuse.js)**: Pencarian awal berbasis *approximate string matching*.
+2. **Dice Coefficient (NLP Layer)**: Mengukur kemiripan bigram antar kata. Sangat efektif untuk menangkap kecocokan bagian kalimat meskipun ada sedikit typo.
+3. **Indonesian Stemmer**: Secara otomatis mengubah kata berimbuhan menjadi kata dasar (misal: "pembelian" -> "beli") sebelum proses pencarian dilakukan.
+4. **Punctuation Signals**:
+   - **Question Mark (`?`)**: Memberikan **Inquiry Boost** (+15 pts) untuk item yang memiliki kolom `answer`.
+   - **Exclamation Mark (`!`)**: Memberikan **Urgency Boost** (+10 pts) untuk meningkatkan visibilitas hasil.
+5. **Weighted Match**:
+   - **Title Match**: Bobot paling tinggi (+20 pts).
+   - **Dice Phrase Bonus**: Bonus hingga +40 pts jika seluruh query memiliki kemiripan tinggi dengan judul.
+   - **Sequential Bonus**: Bonus jika kata kunci muncul berurutan.
+
+### Sales-Driven Boost:
+- **Recommended Item**: +25 pts.
+- **Sales Intent (Beli/Harga/Promo)**: +30 pts jika item memiliki harga.
+- **Product Badge**: +15 pts.
+
+---
+
+## 5. UI Implementation
 
 ### Selectors
 Define the IDs of your HTML elements in a `selectors` object:
@@ -107,9 +204,9 @@ const selectors = {
 
 ### Initialization
 ```typescript
-import { AssistantController } from "./library";
+import { AssistantController } from "./index"; // Or from your main entry point
 
-// Sekarang Fuse.js sudah internal, tidak perlu import manual lagi
+// Fuse.js is now internal, you don't need to pass it anymore!
 const app = new AssistantController(myData, undefined, selectors, config);
 app.openAssistant();
 ```
@@ -133,33 +230,3 @@ window.clearSearchHistory();
 
 ---
 
-## 7. How to Publish to NPM 📦
-
-Untuk mendaftarkan library ini ke NPM agar bisa di-install di project lain (seperti `npm install assistant-in-a-box`), ikuti langkah berikut:
-
-1. **Siapkan Akun**: 
-   Daftar di [npmjs.com](https://www.npmjs.com/) jika belum punya.
-
-2. **Login di Terminal**:
-   ```bash
-   npm login
-   ```
-
-3. **Ganti Nama Paket**:
-   Buka `library/package.json`, ganti `"name": "@your-scope/assistant-in-a-box"` dengan nama unik Anda (misal `"name": "al-bait-assistant"`).
-
-4. **Build Library**:
-   Library ini menggunakan TypeScript, jadi harus di-compile dulu ke JavaScript:
-   ```bash
-   cd library
-   npm install
-   npm run build
-   ```
-
-5. **Publish**:
-   ```bash
-   npm publish --access public
-   ```
-
-Setelah itu, siapapun bisa menggunakannya dengan:
-`npm install nama-paket-anda`

@@ -1,3 +1,3 @@
-export * from "./types";
-export { AssistantEngine } from "./engine";
-export { AssistantController } from "./controller";
+export * from "./src/types";
+export { AssistantEngine } from "./src/engine";
+export { AssistantController } from "./src/controller";
