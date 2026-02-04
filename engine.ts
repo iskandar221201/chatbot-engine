@@ -100,7 +100,23 @@ export class AssistantEngine {
         return detected;
     }
 
-    public search(query: string): AssistantResult {
+    public async search(query: string): Promise<AssistantResult> {
+        // Handle Remote Mode
+        if (this.config.searchMode === 'remote' && this.config.apiUrl) {
+            try {
+                const response = await fetch(`${this.config.apiUrl}?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                return {
+                    results: data.results || [],
+                    intent: data.intent || 'fuzzy',
+                    entities: data.entities || {},
+                    confidence: data.confidence || 0
+                };
+            } catch (error) {
+                console.error("Remote search failed, falling back to local:", error);
+            }
+        }
+
         const processed = this.preprocess(query);
         let candidates: any[] = [];
 

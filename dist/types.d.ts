@@ -49,4 +49,6 @@ export interface AIConfig {
         description?: number;
     };
     stemmingSuffixes?: string[];
+    searchMode?: 'local' | 'remote';
+    apiUrl?: string;
 }

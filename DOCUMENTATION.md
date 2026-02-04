@@ -71,15 +71,19 @@ entityDefinitions: {
 The most powerful feature. Directs the engine to prioritize specific categories based on detected entities or tokens.
 ```typescript
 intentRules: [
-    {
-        intent: "contact_us",
-        conditions: { 
-            tokens: ["contact", "call"],
-            entities: ["isLocation"] 
-        }
     }
 ]
 ```
+
+### 🌐 Hybrid Mode (Local vs Server)
+Anda bisa memilih untuk menjalankan pencarian secara lokal (Client-side) atau melalui API (Server-side).
+
+```typescript
+searchMode: 'remote', // Default: 'local'
+apiUrl: 'https://api.anda.com/search' // Diperlukan jika mode 'remote'
+```
+> [!TIP]
+> Gunakan mode `remote` jika data Anda sangat besar (ribuan baris) dan disimpan di database seperti MySQL atau PostgreSQL.
 
 ---
 
@@ -104,10 +108,16 @@ const selectors = {
 ### Initialization
 ```typescript
 import { AssistantController } from "./library";
-import Fuse from "fuse.js"; // Or from CDN
 
-const app = new AssistantController(myData, Fuse, selectors, config);
-app.openAssistant(); // Open manually if needed
+// Sekarang Fuse.js sudah internal, tidak perlu import manual lagi
+const app = new AssistantController(myData, undefined, selectors, config);
+app.openAssistant();
+```
+
+### Async Search Support
+Pencarian sekarang bersifat asynchronous. Jika Anda menggunakan `AssistantEngine` secara langsung:
+```typescript
+const result = await engine.search("permintaan user");
 ```
 
 ---

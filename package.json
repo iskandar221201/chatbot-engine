@@ -5,7 +5,7 @@
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
-        "build": "tsc",
+        "build": "tsc && if not exist dist\\lib mkdir dist\\lib && copy src\\lib\\* dist\\lib\\",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [
@@ -16,9 +16,7 @@
     ],
     "author": "X.ASKA",
     "license": "MIT",
-    "dependencies": {
-        "fuse.js": "^7.0.0"
-    },
+    "dependencies": {},
     "devDependencies": {
         "typescript": "^5.0.0"
     }

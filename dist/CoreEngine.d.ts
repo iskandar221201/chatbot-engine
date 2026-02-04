@@ -5,9 +5,9 @@ export declare class CoreEngine {
     private fuseInstance;
     private config;
     private context;
-    constructor(data: SearchDataItem[], FuseClass: any, config?: AIConfig);
+    constructor(data: SearchDataItem[], FuseClass?: any, config?: AIConfig);
     private initializeFuse;
-    search(query: string): SearchResult;
+    search(query: string): Promise<SearchResult>;
     private preprocess;
     private getProliminaryCandidates;
     private detectIntent;

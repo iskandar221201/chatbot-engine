@@ -1,4 +1,5 @@
 import { SearchDataItem, SearchResult, AIConfig, SearchContext, IntentDefinition } from './types';
+import Fuse from './lib/fuse';
 
 // Simple default tokenizer if none provided
 const defaultTokenizer = (text: string) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1);
@@ -10,7 +11,7 @@ export class CoreEngine {
     private config: AIConfig;
     private context: SearchContext;
 
-    constructor(data: SearchDataItem[], FuseClass: any, config: AIConfig = {}) {
+    constructor(data: SearchDataItem[], FuseClass: any = Fuse, config: AIConfig = {}) {
         this.data = data;
         this.Fuse = FuseClass;
         this.config = {
@@ -40,7 +41,7 @@ export class CoreEngine {
                     { name: "keywords", weight: this.config.weights?.keywords },
                     { name: "description", weight: this.config.weights?.description },
                 ],
-                threshold: 0.45,
+                threshold: 0.6,
                 includeScore: true,
                 useExtendedSearch: true,
                 findAllMatches: true
@@ -50,7 +51,25 @@ export class CoreEngine {
 
     // --- Core Logic ---
 
-    public search(query: string): SearchResult {
+    public async search(query: string): Promise<SearchResult> {
+        // Handle Remote Mode
+        if (this.config.searchMode === 'remote' && this.config.apiUrl) {
+            try {
+                const response = await fetch(`${this.config.apiUrl}?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                // Merge context into results if server doesn't provide it
+                return {
+                    results: data.results || [],
+                    intent: data.intent || 'general',
+                    confidence: data.confidence || 0,
+                    context: { ...this.context, ...data.context },
+                    stats: data.stats || { totalQueries: this.context.history.length, intentCounts: this.getIntentCounts() }
+                };
+            } catch (error) {
+                console.error("Remote search failed, falling back to local:", error);
+            }
+        }
+
         const processed = this.preprocess(query);
         const intent = this.detectIntent(processed.tokens);
 

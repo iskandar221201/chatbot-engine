@@ -1,10 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CoreEngine = void 0;
+const fuse_1 = __importDefault(require("./lib/fuse"));
 // Simple default tokenizer if none provided
 const defaultTokenizer = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1);
 class CoreEngine {
-    constructor(data, FuseClass, config = {}) {
+    constructor(data, FuseClass = fuse_1.default, config = {}) {
         this.data = data;
         this.Fuse = FuseClass;
         this.config = {
@@ -31,7 +35,7 @@ class CoreEngine {
                     { name: "keywords", weight: this.config.weights?.keywords },
                     { name: "description", weight: this.config.weights?.description },
                 ],
-                threshold: 0.45,
+                threshold: 0.6,
                 includeScore: true,
                 useExtendedSearch: true,
                 findAllMatches: true
@@ -39,7 +43,25 @@ class CoreEngine {
         }
     }
     // --- Core Logic ---
-    search(query) {
+    async search(query) {
+        // Handle Remote Mode
+        if (this.config.searchMode === 'remote' && this.config.apiUrl) {
+            try {
+                const response = await fetch(`${this.config.apiUrl}?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                // Merge context into results if server doesn't provide it
+                return {
+                    results: data.results || [],
+                    intent: data.intent || 'general',
+                    confidence: data.confidence || 0,
+                    context: { ...this.context, ...data.context },
+                    stats: data.stats || { totalQueries: this.context.history.length, intentCounts: this.getIntentCounts() }
+                };
+            }
+            catch (error) {
+                console.error("Remote search failed, falling back to local:", error);
+            }
+        }
         const processed = this.preprocess(query);
         const intent = this.detectIntent(processed.tokens);
         // 1. Fuse.js retrieval
