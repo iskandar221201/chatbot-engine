@@ -23,6 +23,28 @@ export interface AssistantResult {
     answer?: string; // New: Direct response string
 }
 
+// Comparison feature types
+export interface ComparisonItem {
+    title: string;
+    attributes: Record<string, string | number | boolean>;
+    score: number;
+    isRecommended: boolean;
+    url: string;
+    price?: number;
+    salePrice?: number;
+}
+
+export interface ComparisonResult {
+    items: ComparisonItem[];
+    attributeLabels: string[];
+    recommendation: {
+        item: ComparisonItem;
+        reasons: string[];
+    } | null;
+    tableHtml: string;
+    tableMarkdown: string;
+}
+
 export interface AssistantConfig {
     phoneticMap?: Record<string, string[]>;
     semanticMap?: Record<string, string[]>;
@@ -32,11 +54,23 @@ export interface AssistantConfig {
     whatsappNumber?: string;
     stemmingSuffixes?: string[];
     salesTriggers?: Record<string, string[]>;
-    conversationTriggers?: Record<string, string[]>; // New: Greetings, Thanks
-    fallbackIntentResponses?: Record<string, string>; // New: Custom replies
+    conversationTriggers?: Record<string, string[]>;
+    fallbackIntentResponses?: Record<string, string>;
     searchMode?: 'local' | 'remote';
     apiUrl?: string | string[];
     apiHeaders?: Record<string, string>;
+    // Comparison configuration
+    comparisonTriggers?: string[];
+    comparisonLabels?: {
+        title?: string;
+        price?: string;
+        recommendation?: string;
+        bestChoice?: string;
+        reasons?: string;
+        noProducts?: string;
+        vsLabel?: string;
+    };
+    attributeExtractors?: Record<string, RegExp | string>;
 }
 
 export interface IntentRule {

@@ -21,6 +21,25 @@ interface AssistantResult {
     confidence: number;
     answer?: string;
 }
+interface ComparisonItem {
+    title: string;
+    attributes: Record<string, string | number | boolean>;
+    score: number;
+    isRecommended: boolean;
+    url: string;
+    price?: number;
+    salePrice?: number;
+}
+interface ComparisonResult {
+    items: ComparisonItem[];
+    attributeLabels: string[];
+    recommendation: {
+        item: ComparisonItem;
+        reasons: string[];
+    } | null;
+    tableHtml: string;
+    tableMarkdown: string;
+}
 interface AssistantConfig {
     phoneticMap?: Record<string, string[]>;
     semanticMap?: Record<string, string[]>;
@@ -35,6 +54,17 @@ interface AssistantConfig {
     searchMode?: 'local' | 'remote';
     apiUrl?: string | string[];
     apiHeaders?: Record<string, string>;
+    comparisonTriggers?: string[];
+    comparisonLabels?: {
+        title?: string;
+        price?: string;
+        recommendation?: string;
+        bestChoice?: string;
+        reasons?: string;
+        noProducts?: string;
+        vsLabel?: string;
+    };
+    attributeExtractors?: Record<string, RegExp | string>;
 }
 interface IntentRule {
     intent: string;
@@ -72,6 +102,52 @@ declare class AssistantEngine {
     private stemIndonesian;
     private calculateScore;
     private detectIntent;
+    /**
+     * Default comparison triggers (multilingual)
+     */
+    private getComparisonTriggers;
+    /**
+     * Default labels for comparison output (customizable)
+     */
+    private getComparisonLabels;
+    /**
+     * Check if query is a comparison request
+     */
+    isComparisonQuery(query: string): boolean;
+    /**
+     * Extract attributes from description text
+     */
+    private extractAttributes;
+    /**
+     * Calculate comparison score for an item
+     */
+    private calculateComparisonScore;
+    /**
+     * Generate recommendation reasons
+     */
+    private generateReasons;
+    /**
+     * Generate comparison table in HTML
+     */
+    private generateTableHtml;
+    /**
+     * Generate comparison table in Markdown
+     */
+    private generateTableMarkdown;
+    /**
+     * Format attribute label for display
+     */
+    private formatAttributeLabel;
+    /**
+     * Main comparison method - compares products based on query or category
+     */
+    compareProducts(query: string, category?: string, maxItems?: number): Promise<ComparisonResult>;
+    /**
+     * Enhanced search that auto-detects comparison intent
+     */
+    searchWithComparison(query: string): Promise<AssistantResult & {
+        comparison?: ComparisonResult;
+    }>;
 }
 
 declare class AssistantController {
@@ -98,4 +174,4 @@ declare class AssistantController {
     private loadHistory;
 }
 
-export { type AssistantConfig, AssistantController, type AssistantDataItem, AssistantEngine, type AssistantResult, type IntentRule, type UISelectors };
+export { type AssistantConfig, AssistantController, type AssistantDataItem, AssistantEngine, type AssistantResult, type ComparisonItem, type ComparisonResult, type IntentRule, type UISelectors };

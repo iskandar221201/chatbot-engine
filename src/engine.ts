@@ -1,4 +1,4 @@
-import type { AssistantDataItem, AssistantResult, AssistantConfig } from "./types";
+import type { AssistantDataItem, AssistantResult, AssistantConfig, ComparisonItem, ComparisonResult } from "./types";
 import Fuse from "./lib/fuse";
 
 export class AssistantEngine {
@@ -359,5 +359,483 @@ export class AssistantEngine {
         }
 
         return 'fuzzy';
+    }
+
+    // ===== PRODUCT COMPARISON SYSTEM =====
+
+    /**
+     * Default comparison triggers (multilingual)
+     */
+    private getComparisonTriggers(): string[] {
+        const defaultTriggers = [
+            // Indonesian
+            'bandingkan', 'banding', 'perbandingan', 'beda', 'perbedaan', 'lebih bagus', 'lebih baik',
+            'mana yang', 'pilih mana', 'vs', 'versus', 'dibanding', 'ketimbang', 'daripada',
+            // English
+            'compare', 'comparison', 'difference', 'which is better', 'versus', 'vs', 'differ',
+            'choose between', 'better than', 'compared to'
+        ];
+        return this.config.comparisonTriggers || defaultTriggers;
+    }
+
+    /**
+     * Default labels for comparison output (customizable)
+     */
+    private getComparisonLabels() {
+        const defaults = {
+            title: 'Produk',
+            price: 'Harga',
+            recommendation: '🏆 Rekomendasi',
+            bestChoice: 'Pilihan Terbaik',
+            reasons: 'Alasan',
+            noProducts: 'Tidak ada produk untuk dibandingkan.',
+            vsLabel: 'vs'
+        };
+        return { ...defaults, ...(this.config.comparisonLabels || {}) };
+    }
+
+    /**
+     * Check if query is a comparison request
+     */
+    public isComparisonQuery(query: string): boolean {
+        const triggers = this.getComparisonTriggers();
+        const queryLower = query.toLowerCase();
+        return triggers.some(t => queryLower.includes(t));
+    }
+
+    /**
+     * Extract attributes from description text
+     */
+    private extractAttributes(item: AssistantDataItem): Record<string, string | number | boolean> {
+        const attributes: Record<string, string | number | boolean> = {};
+        const description = (item.description || '').toLowerCase();
+        const title = (item.title || '').toLowerCase();
+        const fullText = `${title} ${description}`;
+
+        // Default attribute patterns (can be overridden via config)
+        const defaultExtractors: Record<string, RegExp> = {
+            // Price patterns
+            'harga': /(?:harga|price|biaya)[:\s]*(?:rp\.?|idr)?\s*([\d.,]+)/i,
+            // Capacity/size patterns
+            'kapasitas': /(?:kapasitas|capacity)[:\s]*([\d.,]+\s*(?:gb|mb|tb|liter|kg|gram|ml|l|g))/i,
+            // Speed patterns
+            'kecepatan': /(?:kecepatan|speed)[:\s]*([\d.,]+\s*(?:mbps|gbps|rpm|mhz|ghz))/i,
+            // Warranty patterns
+            'garansi': /(?:garansi|warranty)[:\s]*([\d]+\s*(?:tahun|bulan|year|month|hari|day)s?)/i,
+            // Rating patterns
+            'rating': /(?:rating|bintang|star)[:\s]*([\d.,]+)/i,
+            // Material patterns
+            'material': /(?:bahan|material)[:\s]*([a-zA-Z\s]+?)(?:\.|,|$)/i,
+            // Color patterns
+            'warna': /(?:warna|color|colour)[:\s]*([a-zA-Z\s]+?)(?:\.|,|$)/i,
+            // Dimension patterns
+            'ukuran': /(?:ukuran|size|dimensi|dimension)[:\s]*([\d.,x\s]+(?:cm|mm|m|inch)?)/i,
+        };
+
+        // Merge with custom extractors from config
+        const extractors = { ...defaultExtractors };
+        if (this.config.attributeExtractors) {
+            for (const [key, pattern] of Object.entries(this.config.attributeExtractors)) {
+                extractors[key] = typeof pattern === 'string' ? new RegExp(pattern, 'i') : pattern;
+            }
+        }
+
+        // Extract attributes using patterns
+        for (const [attrName, pattern] of Object.entries(extractors)) {
+            const match = fullText.match(pattern);
+            if (match && match[1]) {
+                attributes[attrName] = match[1].trim();
+            }
+        }
+
+        // Add existing structured data
+        if (item.price_numeric) attributes['harga'] = item.price_numeric;
+        if (item.sale_price) attributes['harga_promo'] = item.sale_price;
+        if (item.badge_text) attributes['badge'] = item.badge_text;
+        if (item.is_recommended) attributes['direkomendasikan'] = true;
+
+        // Extract features from description (bullet points or comma-separated)
+        const featurePatterns = [
+            /(?:fitur|feature|keunggulan|kelebihan)[:\s]*([^.]+)/gi,
+            /(?:•|▪|★|✓|✔|-)([^•▪★✓✔\-\n]+)/g
+        ];
+
+        const features: string[] = [];
+        for (const pattern of featurePatterns) {
+            let match;
+            while ((match = pattern.exec(fullText)) !== null) {
+                const feature = match[1].trim();
+                if (feature.length > 3 && feature.length < 100) {
+                    features.push(feature);
+                }
+            }
+        }
+        if (features.length > 0) {
+            attributes['fitur'] = features.slice(0, 5).join('; ');
+        }
+
+        return attributes;
+    }
+
+    /**
+     * Calculate comparison score for an item
+     */
+    private calculateComparisonScore(item: AssistantDataItem, attributes: Record<string, string | number | boolean>): number {
+        let score = 0;
+
+        // Price advantage (lower is better, sale price bonus)
+        if (item.sale_price && item.price_numeric) {
+            const discount = ((item.price_numeric - item.sale_price) / item.price_numeric) * 100;
+            score += Math.min(discount, 50); // Max 50 points for discount
+        }
+
+        // Recommendation bonus
+        if (item.is_recommended) score += 30;
+
+        // Badge bonus
+        if (item.badge_text) {
+            const badgeLower = item.badge_text.toLowerCase();
+            if (badgeLower.includes('best') || badgeLower.includes('terbaik')) score += 25;
+            if (badgeLower.includes('popular') || badgeLower.includes('populer')) score += 20;
+            if (badgeLower.includes('new') || badgeLower.includes('baru')) score += 15;
+            if (badgeLower.includes('sale') || badgeLower.includes('promo')) score += 15;
+        }
+
+        // Feature richness bonus
+        const featureCount = Object.keys(attributes).length;
+        score += Math.min(featureCount * 5, 25);
+
+        // Rating bonus
+        if (attributes['rating']) {
+            const rating = parseFloat(String(attributes['rating']));
+            if (!isNaN(rating)) score += rating * 5;
+        }
+
+        // Warranty bonus
+        if (attributes['garansi']) {
+            const warrantyMatch = String(attributes['garansi']).match(/(\d+)/);
+            if (warrantyMatch) {
+                const years = parseInt(warrantyMatch[1]);
+                score += Math.min(years * 10, 30);
+            }
+        }
+
+        return score;
+    }
+
+    /**
+     * Generate recommendation reasons
+     */
+    private generateReasons(item: ComparisonItem, allItems: ComparisonItem[]): string[] {
+        const reasons: string[] = [];
+        const labels = this.getComparisonLabels();
+
+        // Price comparison
+        if (item.salePrice && item.price) {
+            const discount = Math.round(((item.price - item.salePrice) / item.price) * 100);
+            reasons.push(`Diskon ${discount}% dari harga normal`);
+        }
+
+        // Cheapest check
+        const prices = allItems.filter(i => i.price || i.salePrice).map(i => i.salePrice || i.price || Infinity);
+        const myPrice = item.salePrice || item.price || Infinity;
+        if (myPrice === Math.min(...prices) && prices.length > 1) {
+            reasons.push('Harga paling terjangkau');
+        }
+
+        // Most features
+        const featureCounts = allItems.map(i => Object.keys(i.attributes).length);
+        if (Object.keys(item.attributes).length === Math.max(...featureCounts) && featureCounts.length > 1) {
+            reasons.push('Fitur paling lengkap');
+        }
+
+        // Has warranty
+        if (item.attributes['garansi']) {
+            reasons.push(`Garansi: ${item.attributes['garansi']}`);
+        }
+
+        // Is recommended
+        if (item.isRecommended) {
+            reasons.push('Direkomendasikan oleh tim kami');
+        }
+
+        return reasons.slice(0, 4);
+    }
+
+    /**
+     * Generate comparison table in HTML
+     */
+    private generateTableHtml(items: ComparisonItem[], attributeLabels: string[]): string {
+        const labels = this.getComparisonLabels();
+
+        if (items.length === 0) {
+            return `<p>${labels.noProducts}</p>`;
+        }
+
+        let html = `<table class="comparison-table" style="width:100%;border-collapse:collapse;font-size:14px;">`;
+
+        // Header row
+        html += `<thead><tr style="background:#f5f5f5;">`;
+        html += `<th style="padding:12px;border:1px solid #ddd;text-align:left;">${labels.title}</th>`;
+        for (const item of items) {
+            const recommended = item.isRecommended ? ' ⭐' : '';
+            html += `<th style="padding:12px;border:1px solid #ddd;text-align:center;">${item.title}${recommended}</th>`;
+        }
+        html += `</tr></thead>`;
+
+        // Body rows
+        html += `<tbody>`;
+
+        // Price row (always show if available)
+        const hasPrice = items.some(i => i.price || i.salePrice);
+        if (hasPrice) {
+            html += `<tr>`;
+            html += `<td style="padding:10px;border:1px solid #ddd;font-weight:bold;">${labels.price}</td>`;
+            for (const item of items) {
+                let priceHtml = '-';
+                if (item.salePrice && item.price && item.salePrice < item.price) {
+                    priceHtml = `<span style="text-decoration:line-through;color:#999;">Rp ${item.price.toLocaleString('id-ID')}</span><br><span style="color:#e53935;font-weight:bold;">Rp ${item.salePrice.toLocaleString('id-ID')}</span>`;
+                } else if (item.price) {
+                    priceHtml = `Rp ${item.price.toLocaleString('id-ID')}`;
+                } else if (item.salePrice) {
+                    priceHtml = `<span style="color:#e53935;font-weight:bold;">Rp ${item.salePrice.toLocaleString('id-ID')}</span>`;
+                }
+                html += `<td style="padding:10px;border:1px solid #ddd;text-align:center;">${priceHtml}</td>`;
+            }
+            html += `</tr>`;
+        }
+
+        // Attribute rows
+        for (const attr of attributeLabels) {
+            if (attr === 'harga' || attr === 'harga_promo') continue; // Already handled
+            html += `<tr>`;
+            html += `<td style="padding:10px;border:1px solid #ddd;font-weight:bold;">${this.formatAttributeLabel(attr)}</td>`;
+            for (const item of items) {
+                const value = item.attributes[attr];
+                let displayValue = '-';
+                if (value !== undefined && value !== null) {
+                    if (typeof value === 'boolean') {
+                        displayValue = value ? '✓' : '✗';
+                    } else {
+                        displayValue = String(value);
+                    }
+                }
+                html += `<td style="padding:10px;border:1px solid #ddd;text-align:center;">${displayValue}</td>`;
+            }
+            html += `</tr>`;
+        }
+
+        html += `</tbody></table>`;
+        return html;
+    }
+
+    /**
+     * Generate comparison table in Markdown
+     */
+    private generateTableMarkdown(items: ComparisonItem[], attributeLabels: string[]): string {
+        const labels = this.getComparisonLabels();
+
+        if (items.length === 0) {
+            return labels.noProducts;
+        }
+
+        let md = '';
+
+        // Header row
+        md += `| ${labels.title} |`;
+        for (const item of items) {
+            const recommended = item.isRecommended ? ' ⭐' : '';
+            md += ` ${item.title}${recommended} |`;
+        }
+        md += '\n';
+
+        // Separator
+        md += `|---|`;
+        for (let i = 0; i < items.length; i++) {
+            md += `---|`;
+        }
+        md += '\n';
+
+        // Price row
+        const hasPrice = items.some(i => i.price || i.salePrice);
+        if (hasPrice) {
+            md += `| **${labels.price}** |`;
+            for (const item of items) {
+                if (item.salePrice && item.price && item.salePrice < item.price) {
+                    md += ` ~~Rp ${item.price.toLocaleString('id-ID')}~~ **Rp ${item.salePrice.toLocaleString('id-ID')}** |`;
+                } else if (item.price) {
+                    md += ` Rp ${item.price.toLocaleString('id-ID')} |`;
+                } else if (item.salePrice) {
+                    md += ` **Rp ${item.salePrice.toLocaleString('id-ID')}** |`;
+                } else {
+                    md += ` - |`;
+                }
+            }
+            md += '\n';
+        }
+
+        // Attribute rows
+        for (const attr of attributeLabels) {
+            if (attr === 'harga' || attr === 'harga_promo') continue;
+            md += `| **${this.formatAttributeLabel(attr)}** |`;
+            for (const item of items) {
+                const value = item.attributes[attr];
+                let displayValue = '-';
+                if (value !== undefined && value !== null) {
+                    if (typeof value === 'boolean') {
+                        displayValue = value ? '✓' : '✗';
+                    } else {
+                        displayValue = String(value);
+                    }
+                }
+                md += ` ${displayValue} |`;
+            }
+            md += '\n';
+        }
+
+        return md;
+    }
+
+    /**
+     * Format attribute label for display
+     */
+    private formatAttributeLabel(attr: string): string {
+        const labelMap: Record<string, string> = {
+            'harga': 'Harga',
+            'harga_promo': 'Harga Promo',
+            'kapasitas': 'Kapasitas',
+            'kecepatan': 'Kecepatan',
+            'garansi': 'Garansi',
+            'rating': 'Rating',
+            'material': 'Material',
+            'warna': 'Warna',
+            'ukuran': 'Ukuran',
+            'fitur': 'Fitur',
+            'badge': 'Badge',
+            'direkomendasikan': 'Rekomendasi'
+        };
+        return labelMap[attr] || attr.charAt(0).toUpperCase() + attr.slice(1);
+    }
+
+    /**
+     * Main comparison method - compares products based on query or category
+     */
+    public async compareProducts(query: string, category?: string, maxItems: number = 4): Promise<ComparisonResult> {
+        // Get relevant products
+        let candidates: AssistantDataItem[] = [];
+
+        if (category) {
+            // Filter by category
+            candidates = this.searchData.filter(item =>
+                item.category.toLowerCase().includes(category.toLowerCase())
+            );
+        } else {
+            // Use search to find relevant products
+            const searchResult = await this.search(query);
+            candidates = searchResult.results;
+        }
+
+        // If still no candidates, try to extract category from query
+        if (candidates.length === 0) {
+            const processed = this.preprocess(query);
+            for (const item of this.searchData) {
+                const titleLower = item.title.toLowerCase();
+                const categoryLower = item.category.toLowerCase();
+                if (processed.tokens.some(t => titleLower.includes(t) || categoryLower.includes(t))) {
+                    candidates.push(item);
+                }
+            }
+        }
+
+        // Limit candidates
+        candidates = candidates.slice(0, maxItems);
+
+        // Extract attributes for each candidate
+        const comparisonItems: ComparisonItem[] = candidates.map(item => {
+            const attributes = this.extractAttributes(item);
+            const score = this.calculateComparisonScore(item, attributes);
+
+            return {
+                title: item.title,
+                attributes,
+                score,
+                isRecommended: item.is_recommended || false,
+                url: item.url,
+                price: item.price_numeric,
+                salePrice: item.sale_price
+            };
+        });
+
+        // Sort by score
+        comparisonItems.sort((a, b) => b.score - a.score);
+
+        // Collect all unique attribute labels
+        const allAttributes = new Set<string>();
+        for (const item of comparisonItems) {
+            for (const attr of Object.keys(item.attributes)) {
+                allAttributes.add(attr);
+            }
+        }
+        const attributeLabels = Array.from(allAttributes);
+
+        // Generate recommendation
+        let recommendation = null;
+        if (comparisonItems.length > 0) {
+            const bestItem = comparisonItems[0];
+            const reasons = this.generateReasons(bestItem, comparisonItems);
+            recommendation = {
+                item: bestItem,
+                reasons
+            };
+        }
+
+        // Generate tables
+        const tableHtml = this.generateTableHtml(comparisonItems, attributeLabels);
+        const tableMarkdown = this.generateTableMarkdown(comparisonItems, attributeLabels);
+
+        return {
+            items: comparisonItems,
+            attributeLabels,
+            recommendation,
+            tableHtml,
+            tableMarkdown
+        };
+    }
+
+    /**
+     * Enhanced search that auto-detects comparison intent
+     */
+    public async searchWithComparison(query: string): Promise<AssistantResult & { comparison?: ComparisonResult }> {
+        const baseResult = await this.search(query);
+
+        // Check if this is a comparison query
+        if (this.isComparisonQuery(query)) {
+            const comparison = await this.compareProducts(query);
+            const labels = this.getComparisonLabels();
+
+            // Build answer with comparison
+            let answer = '';
+            if (comparison.recommendation) {
+                answer = `${labels.recommendation}: **${comparison.recommendation.item.title}**\n\n`;
+                if (comparison.recommendation.reasons.length > 0) {
+                    answer += `${labels.reasons}:\n`;
+                    for (const reason of comparison.recommendation.reasons) {
+                        answer += `• ${reason}\n`;
+                    }
+                }
+                answer += `\n${comparison.tableMarkdown}`;
+            } else {
+                answer = labels.noProducts;
+            }
+
+            return {
+                ...baseResult,
+                intent: 'comparison',
+                answer,
+                comparison
+            };
+        }
+
+        return baseResult;
     }
 }
