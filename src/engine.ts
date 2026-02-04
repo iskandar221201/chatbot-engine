@@ -175,16 +175,28 @@ export class AssistantEngine {
             this.history.lastCategory = finalResults[0].item.category;
         }
 
+        const intent = this.detectIntent(processed);
+        const isConversational = intent.startsWith('chat_');
+
+        // Fallback friendly responses for small talk
+        let fallbackAnswer = "";
+        if (intent === 'chat_greeting') {
+            fallbackAnswer = this.config.fallbackIntentResponses?.['chat_greeting'] || "Halo! Ada yang bisa saya bantu hari ini? Anda bisa tanya tentang produk, harga, atau promo kami.";
+        } else if (intent === 'chat_thanks') {
+            fallbackAnswer = this.config.fallbackIntentResponses?.['chat_thanks'] || "Sama-sama! Senang bisa membantu. Ada lagi yang ingin ditanyakan?";
+        }
+
         const topMatches = finalResults
-            .filter(r => r.score > 10)
+            .filter(r => r.score > 10 || (isConversational && r.score > 5))
             .map(r => r.item)
             .slice(0, 5);
 
         return {
             results: topMatches,
-            intent: this.detectIntent(processed),
+            intent: intent,
             entities: processed.entities,
-            confidence: finalResults.length > 0 ? Math.min(Math.round(finalResults[0].score * 2), 100) : 0
+            confidence: finalResults.length > 0 ? Math.min(Math.round(finalResults[0].score * 2), 100) : (isConversational ? 80 : 0),
+            answer: fallbackAnswer || (topMatches[0]?.answer || "")
         };
     }
 
@@ -324,6 +336,17 @@ export class AssistantEngine {
 
         for (const [intent, tokens] of Object.entries(triggers)) {
             if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `sales_${intent}`;
+        }
+
+        // Conversational triggers (Greeting, Thanks)
+        const defaultChatTriggers = {
+            'greeting': ['halo', 'halo', 'hi', 'helo', 'hey', 'pagi', 'siang', 'sore', 'malam', 'assalamualaikum', 'permisi', 'hello'],
+            'thanks': ['terima kasih', 'thanks', 'tq', 'syukron', 'makasih', 'oke', 'sip', 'mantap']
+        };
+        const chatTriggers = { ...defaultChatTriggers, ...(this.config.conversationTriggers || {}) };
+
+        for (const [intent, tokens] of Object.entries(chatTriggers)) {
+            if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `chat_${intent}`;
         }
 
         if (!this.config.intentRules) return 'fuzzy';

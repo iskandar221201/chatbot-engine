@@ -20,6 +20,7 @@ export interface AssistantResult {
     intent: string;
     entities: Record<string, boolean>;
     confidence: number;
+    answer?: string; // New: Direct response string
 }
 
 export interface AssistantConfig {
@@ -31,6 +32,8 @@ export interface AssistantConfig {
     whatsappNumber?: string;
     stemmingSuffixes?: string[];
     salesTriggers?: Record<string, string[]>;
+    conversationTriggers?: Record<string, string[]>; // New: Greetings, Thanks
+    fallbackIntentResponses?: Record<string, string>; // New: Custom replies
     searchMode?: 'local' | 'remote';
     apiUrl?: string | string[];
     apiHeaders?: Record<string, string>;

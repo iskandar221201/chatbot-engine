@@ -19,6 +19,7 @@ interface AssistantResult {
     intent: string;
     entities: Record<string, boolean>;
     confidence: number;
+    answer?: string;
 }
 interface AssistantConfig {
     phoneticMap?: Record<string, string[]>;
@@ -29,6 +30,8 @@ interface AssistantConfig {
     whatsappNumber?: string;
     stemmingSuffixes?: string[];
     salesTriggers?: Record<string, string[]>;
+    conversationTriggers?: Record<string, string[]>;
+    fallbackIntentResponses?: Record<string, string>;
     searchMode?: 'local' | 'remote';
     apiUrl?: string | string[];
     apiHeaders?: Record<string, string>;
