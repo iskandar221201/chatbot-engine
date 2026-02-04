@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assistant-in-a-Box | Premium Sales Chatbot</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
         .hero {
@@ -19,54 +20,79 @@
 <body>
 
     <section class="hero">
-        <h1>Sales-Driven AI Assistant</h1>
-        <p>Transform your static landing page into a proactive sales machine with <b>Assistant-in-a-Box</b>. The first
-            chatbot engine that prioritizes your business goals.</p>
-        <a href="#" class="btn-primary" onclick="app.openAssistant(); return false;">Try Interactive Demo</a>
+        <div
+            style="background: rgba(99, 102, 241, 0.15); color: var(--primary); padding: 0.5rem 1.25rem; border-radius: 99px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 2rem; border: 1px solid rgba(99, 102, 241, 0.2); backdrop-filter: blur(5px);">
+            🚀 V2.0 Smart Engine
+        </div>
+        <h1>Next-Gen Sales Intelligence</h1>
+        <p>Transform your static landing page into a proactive sales machine. <b>Assistant-in-a-Box</b> uses
+            intent-aware AI to convert visitors into customers.</p>
+        <div style="display: flex; gap: 1.5rem; margin-top: 1rem;">
+            <a href="#" class="btn-primary" onclick="app.openAssistant(); return false;">Launch Demo</a>
+            <a href="https://github.com/iskandar221201/chatbot-engine" target="_blank"
+                style="padding: 1.5rem 2rem; color: white; text-decoration: none; font-weight: 600; font-size: 0.9rem; border-bottom: 2px solid var(--primary); transition: all 0.3s;">Docs
+                & Research</a>
+        </div>
     </section>
 
-    <!-- Assistant UI (Standard Example) -->
+    <!-- Assistant UI (Glassmorphism Modal) -->
     <div id="search-overlay" class="hidden opacity-0">
         <div id="chat-window">
             <div class="chat-header">
-                <div class="flex items-center gap-3">
-                    <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
-                    <span class="font-bold">Sales Assistant</span>
+                <div class="header-info">
+                    <div class="status-dot"></div>
+                    <div>
+                        <p class="font-extrabold" style="font-size: 1.2rem; line-height: 1.1; margin-bottom: 2px;">Sales
+                            Intelligence</p>
+                        <p style="font-size: 0.75rem; opacity: 0.9; font-weight: 500;">AI Engine Online</p>
+                    </div>
                 </div>
-                <button id="close-search" style="background: none; border: none; color: white; cursor: pointer;">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path d="M6 18L18 6M6 6l12 12" stroke-width="2"></path>
+                <button id="close-search" title="Close chat">
+                    <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12" stroke-width="2.5" stroke-linecap="round"
+                            stroke-linejoin="round"></path>
                     </svg>
                 </button>
             </div>
 
             <div id="chat-container">
-                <div id="messages-list" class="space-y-4">
+                <div id="messages-list">
                     <!-- Dynamic Messages -->
                 </div>
 
-                <!-- Quick Tips -->
-                <div id="quick-tips" class="flex flex-wrap gap-2 mt-4 px-2">
-                    <button class="quick-chip" onclick="app.sendMessage('Ada promo apa?')">🎁 Promo Terbaru</button>
-                    <button class="quick-chip" onclick="app.sendMessage('Bandingkan Paket Umroh')">⚖️ Bandingkan
-                        Paket</button>
-                    <button class="quick-chip" onclick="app.sendMessage('Rekomendasi terbaik?')">🏆 Rekomendasi</button>
-                    <button class="quick-chip" onclick="app.sendMessage('Harga iPhone 15 Pro trus fiturnya apa?')">⚡
-                        Tanya Harga & Fitur</button>
+                <!-- Quick Tips (Modern Chips) -->
+                <div id="quick-tips">
+                    <button class="quick-chip" onclick="app.sendMessage('Ada promo apa hari ini?')">🎁 Cek
+                        Promo</button>
+                    <button class="quick-chip" onclick="app.sendMessage('Bandingkan iPhone 15 Pro vs Samsung S24')">⚖️
+                        Perbandingan</button>
+                    <button class="quick-chip" onclick="app.sendMessage('Rekomendasi terbaik untuk saya?')">🏆 Paling
+                        Laris</button>
+                    <button class="quick-chip"
+                        onclick="app.sendMessage('Harga iPhone 15 Pro trus fitur unggulannya apa?')">⚡
+                        Multi-Intent</button>
+                    <button class="quick-chip" onclick="app.sendMessage('Hubungi admin via WhatsApp')">💬 Chat
+                        Admin</button>
                 </div>
 
-                <!-- Typing Indicator -->
-                <div id="typing-indicator"
-                    class="hidden opacity-0 p-4 bg-gray-50 rounded-2xl w-max italic text-xs text-gray-400">Assistant
-                    sedang mengetik...</div>
+                <!-- Typing Indicator (Animated) -->
+                <div id="typing-indicator" class="hidden opacity-0">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <span style="font-size: 0.75rem; color: var(--gray); font-weight: 500; margin-left: 8px;">AI is
+                        thinking...</span>
+                </div>
             </div>
 
             <div class="chat-footer">
                 <div class="input-wrapper">
-                    <input type="text" id="search-input" placeholder="Tanya tentang promo atau produk kami...">
+                    <input type="text" id="search-input" placeholder="Tanyakan harga, fitur, atau promo...">
                     <button id="send-btn">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
                     </button>
                 </div>
@@ -84,35 +110,7 @@
 
     <script>
         // ==========================================
-        // 1. DATA PREPARATION (Reference: Doc Sec 2)
-        // ==========================================
-        let app; // Declare globally
-
-        function initAssistant() {
-            try {
-                // Load data from global variable (loaded via sample-data.js)
-                const products = window.SAMPLE_PRODUCTS || [];
-
-                if (products.length === 0) {
-                    console.warn("No products found in sample-data.js");
-                }
-
-                // Initialize immediately since data is loaded synchronously
-                // ==========================================
-                // 4. INITIALIZATION
-                // ==========================================
-                // Ensure configuration matches documentation reference (Sec 3 & 4)
-                const config = window.ASSISTANT_CONFIG || {};
-
-                app = new Assistant.AssistantController(products, undefined, selectors, config);
-                console.log('Assistant initialized successfully');
-            } catch (error) {
-                console.error('Error initializing assistant:', error);
-            }
-        }
-
-        // ==========================================
-        // 2. UI SELECTORS (Reference: Doc Sec 5)
+        // UI SELECTORS (Reference: Doc Sec 5)
         // ==========================================
         const selectors = {
             overlayId: "search-overlay",
@@ -123,6 +121,30 @@
             messagesListId: "messages-list",
             typingIndicatorId: "typing-indicator"
         };
+
+        let app; // Declare globally
+
+        function initAssistant() {
+            try {
+                // Load data from global variable (loaded via sample-data.js)
+                const products = window.SAMPLE_PRODUCTS || [];
+                const config = window.ASSISTANT_CONFIG || {};
+
+                if (products.length === 0) {
+                    console.warn("No products found in sample-data.js");
+                }
+
+                // INITIALIZATION
+                if (window.Assistant && window.Assistant.AssistantController) {
+                    app = new Assistant.AssistantController(products, undefined, selectors, config);
+                    console.log('Assistant initialized successfully');
+                } else {
+                    console.error('Assistant library not loaded. Make sure dist/index.global.js exists.');
+                }
+            } catch (error) {
+                console.error('Error initializing assistant:', error);
+            }
+        }
 
         // Start initialization
         initAssistant();
