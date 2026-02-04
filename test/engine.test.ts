@@ -66,6 +66,19 @@ describe('AssistantEngine Core', () => {
         const result2 = await engine.search('samsong');
         expect(result2.results[0].title).toContain('Samsung');
     });
+
+    it('should handle deep Indonesian stemming (Sastrawi integration)', async () => {
+        const dataWithEkonomi = [...mockData, {
+            title: "Buku Ekonomi",
+            category: "Buku",
+            description: "Belajar ekonomi pembangunan.",
+            keywords: ["keuangan"],
+            url: "/ekonomi"
+        }];
+        const engine2 = new AssistantEngine(dataWithEkonomi);
+        const res = await engine2.search('perekonomian');
+        expect(res.results[0].title).toBe('Buku Ekonomi');
+    });
 });
 
 describe('Comparison Features', () => {

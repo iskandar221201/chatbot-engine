@@ -1,5 +1,6 @@
 import type { AssistantDataItem, AssistantResult, AssistantConfig, ComparisonItem, ComparisonResult } from "./types";
 import Fuse from "./lib/fuse";
+import { Stemmer, Tokenizer } from "./lib/sastrawi";
 
 export class AssistantEngine {
     private searchData: AssistantDataItem[];
@@ -11,6 +12,9 @@ export class AssistantEngine {
         lastCategory: string | null;
         detectedEntities: Set<string>;
     };
+
+    private stemmer: Stemmer;
+    private tokenizer: Tokenizer;
 
     constructor(searchData: AssistantDataItem[], FuseClass: any = Fuse, config: AssistantConfig = {}) {
         this.searchData = searchData;
@@ -28,6 +32,9 @@ export class AssistantEngine {
             lastCategory: null,
             detectedEntities: new Set(),
         };
+
+        this.stemmer = new Stemmer();
+        this.tokenizer = new Tokenizer();
 
         this.initFuse();
     }
@@ -224,44 +231,7 @@ export class AssistantEngine {
     }
 
     private stemIndonesian(word: string): string {
-        let stemmed = word.toLowerCase();
-
-        // 1. Remove inflectional suffixes (-lah, -kah, -ku, -mu, -nya)
-        const particleSuffixes = ['lah', 'kah', 'pun', 'ku', 'mu', 'nya'];
-        for (const s of particleSuffixes) {
-            if (stemmed.endsWith(s) && stemmed.length > s.length + 3) {
-                stemmed = stemmed.slice(0, -s.length);
-                break;
-            }
-        }
-
-        // 2. Remove derivational suffixes (-kan, -an, -i)
-        const derivationSuffixes = ['kan', 'an', 'i'];
-        for (const s of derivationSuffixes) {
-            if (stemmed.endsWith(s) && stemmed.length > s.length + 3) {
-                // Special case for 'i' to avoid overstemming
-                if (s === 'i' && stemmed.endsWith('ti')) continue;
-                stemmed = stemmed.slice(0, -s.length);
-                break;
-            }
-        }
-
-        // 3. Remove derivational prefixes (me-, pe-, di-, ter-, ke-, ber-, se-)
-        // This is a simplified version of Sastrawi logic
-        const prefixes = ['memper', 'pember', 'penge', 'peng', 'peny', 'pen', 'pem', 'per', 'pe', 'ber', 'be', 'ter', 'te', 'me', 'di', 'ke', 'se'];
-        for (const p of prefixes) {
-            if (stemmed.startsWith(p) && stemmed.length > p.length + 3) {
-                // Rule-based root recovery (simplified)
-                if (p === 'mem' && 'aiueo'.includes(stemmed[3])) stemmed = 'p' + stemmed.slice(3);
-                else if (p === 'men' && 'aiueo'.includes(stemmed[3])) stemmed = 't' + stemmed.slice(3);
-                else if (p === 'meng' && 'aiueo'.includes(stemmed[4])) stemmed = 'k' + stemmed.slice(4);
-                else if (p === 'meny' && 'aiueo'.includes(stemmed[4])) stemmed = 's' + stemmed.slice(4);
-                else stemmed = stemmed.slice(p.length);
-                break;
-            }
-        }
-
-        return stemmed;
+        return this.stemmer.stem(word.toLowerCase());
     }
 
     private calculateScore(item: AssistantDataItem, processed: any, fuseScore: number): number {

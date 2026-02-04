@@ -92,6 +92,8 @@ declare class AssistantEngine {
     private fuse;
     private config;
     private history;
+    private stemmer;
+    private tokenizer;
     constructor(searchData: AssistantDataItem[], FuseClass?: any, config?: AssistantConfig);
     private initFuse;
     private autoCorrect;

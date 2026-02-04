@@ -181,7 +181,7 @@ Engine ini menggunakan sistem **Composite Scoring** (Fuzzy + NLP + Business Logi
 ### Komponen Skor Utama:
 1. **Fuzzy Base (Fuse.js)**: Pencarian awal berbasis *approximate string matching*.
 2. **Dice Coefficient (NLP Layer)**: Mengukur kemiripan bigram antar kata. Sangat efektif untuk menangkap kecocokan bagian kalimat meskipun ada sedikit typo.
-3. **Indonesian Stemmer**: Secara otomatis mengubah kata berimbuhan menjadi kata dasar (misal: "pembelian" -> "beli") sebelum proses pencarian dilakukan.
+3. **Indonesian Stemmer (SastrawiJs built-in)**: Menggunakan algoritma **Nazief & Adriani** yang sangat akurat untuk mengubah kata berimbuhan menjadi kata dasar (misal: "perekonomian" -> "ekonomi", "keberangkatan" -> "berangkat") secara otomatis.
 4. **Punctuation Signals**:
    - **Question Mark (`?`)**: Memberikan **Inquiry Boost** (+15 pts) untuk item yang memiliki kolom `answer`.
    - **Exclamation Mark (`!`)**: Memberikan **Urgency Boost** (+10 pts) untuk meningkatkan visibilitas hasil.
