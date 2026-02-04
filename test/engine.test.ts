@@ -158,3 +158,65 @@ describe('Remote Mode & Security', () => {
         expect(result.results).toHaveLength(2);
     });
 });
+
+describe('Smart Splitting & Compound Queries', () => {
+    let engine: AssistantEngine;
+
+    beforeEach(() => {
+        engine = new AssistantEngine(mockData);
+    });
+
+    it('should split query using punctuation', async () => {
+        const result = await engine.search('harga iphone? fiturnya apa');
+        // Based on logic, this should trigger compound handling
+        // Each part should produce results
+        expect(result.intent).toBe('compound');
+        expect(result.answer).toContain('Harga iPhone 15 Pro');
+        expect(result.answer).toContain('Fitur iPhone 15 Pro');
+    });
+
+    it('should split query using triggers (Trigger-Aware Split)', async () => {
+        const result = await engine.search('Harga iPhone berapa fiturnya apa');
+        // "berapa" and "fitur" are triggers that should cause a split if combined
+        expect(result.intent).toBe('compound');
+        expect(result.answer).toContain('Harga iPhone 15 Pro');
+        expect(result.answer).toContain('Fitur iPhone 15 Pro');
+    });
+});
+
+describe('Localization & Custom Templates', () => {
+    it('should use custom currency and locale', async () => {
+        const engine = new AssistantEngine(mockData, undefined, {
+            locale: 'en-US',
+            currencySymbol: '$',
+            answerTemplates: {
+                price: '{title} price is {currency} {price}'
+            }
+        });
+
+        const result = await engine.search('harga iphone');
+        expect(result.answer).toBe('iPhone 15 Pro price is $ 20,000,000');
+    });
+
+    it('should use custom fallback responses', async () => {
+        const engine = new AssistantEngine(mockData, undefined, {
+            fallbackIntentResponses: {
+                'chat_greeting': 'Welcome to our store! How can I help?'
+            }
+        });
+
+        const result = await engine.search('halo');
+        expect(result.answer).toBe('Welcome to our store! How can I help?');
+    });
+
+    it('should show no results template', async () => {
+        const engine = new AssistantEngine(mockData, undefined, {
+            answerTemplates: {
+                noResults: 'Nothing found.'
+            }
+        });
+
+        const result = await engine.search('asdfghjkl');
+        expect(result.answer).toBe('Nothing found.');
+    });
+});

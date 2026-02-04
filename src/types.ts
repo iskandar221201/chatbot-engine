@@ -70,8 +70,27 @@ export interface AssistantConfig {
         reasons?: string;
         noProducts?: string;
         vsLabel?: string;
+        discount?: string;
+        cheapest?: string;
+        mostFeatures?: string;
+        warranty?: string;
+        teamRecommendation?: string;
     };
     attributeExtractors?: Record<string, RegExp | string>;
+    featurePatterns?: (RegExp | string)[];
+    attributeLabels?: Record<string, string>;
+    schema?: Record<string, string>;
+    conjunctions?: string[] | RegExp;
+    // UI & Localization
+    locale?: string;
+    currencySymbol?: string;
+    answerTemplates?: {
+        price?: string;
+        features?: string;
+        noResults?: string;
+    };
+    resultLimit?: number;
+    subSearchJoiner?: string;
 }
 
 export interface IntentRule {

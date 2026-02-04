@@ -63,5 +63,18 @@ window.ASSISTANT_CONFIG = {
                 tokens: ["murah", "potongan"]
             }
         }
+    ],
+
+    // F. Internal Schema & Extraction
+    schema: {
+        PRICE: 'harga',
+        PRICE_PROMO: 'harga_promo',
+        BADGE: 'badge',
+        RECOMMENDED: 'direkomendasikan',
+        FEATURES: 'fitur'
+    },
+    featurePatterns: [
+        /(?:fitur|feature|keunggulan|detail)[:\s]*([^.]+)/gi,
+        /(?:•|✓|★)([^•✓★\n]+)/g
     ]
 };

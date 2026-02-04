@@ -59,6 +59,8 @@ Chatbot ini dirancang untuk memaksimalkan konversi secara otomatis.
 - **Universal Triggers**: Bisa dikonfigurasi untuk bahasa lain (Arab, Mandarin, etc) lewat `salesTriggers`.
 - **Dynamic Badges**: Otomatis menampilkan tag **"Rekomendasi"** atau **"Hot Deal"** (dari `badge_text`).
 - **High-Conversion UI**: Menampilkan perbandingan harga (diskon) dan tombol **"Pesan Sekarang"** yang menonjol.
+- **Compound Intelligence (New)**: Mampu memproses kalimat majemuk/berantai. Jika user bertanya "harga produk A trus fiturnya apa", engine akan memilahnya menjadi dua sub-query namun tetap menjaga konteks produk A.
+
 
 #### 🛠️ Customizing Sales Triggers
 Jika landing page Anda menggunakan bahasa selain Indo/Inggris, tambahkan keyword baru:
@@ -146,6 +148,48 @@ const config = {
     // Tidak butuh apiHeaders di sini!
 };
 ```
+
+### 🔀 Compound Query Configuration
+Konfigurasi bagaimana bot memisahkan kalimat majemuk:
+```typescript
+conjunctions: ['trus', 'dan', 'lalu', 'plus'], // Daftar kata sambung (Array)
+// ATAU gunakan Regex kustom:
+// conjunctions: /\s+(?:kemudian|setelah\s+itu)\s+/gi
+```
+
+### 🏷️ Attribute Label Customization
+Ubah tampilan nama atribut tanpa merubah data asli:
+```typescript
+attributeLabels: {
+    'harga': 'Investasi',
+    'garansi': 'Jaminan Layanan',
+    'kapasitas': 'Daya Tampung'
+}
+```
+
+### 🏗️ Internal Schema Configuration (New)
+Jika data Anda menggunakan kunci internal yang berbeda atau Anda ingin melokalisasi kunci mapping atribut:
+```typescript
+schema: {
+    PRICE: 'harga',
+    PRICE_PROMO: 'harga_promo',
+    BADGE: 'badge',
+    RECOMMENDED: 'direkomendasikan',
+    FEATURES: 'fitur',
+    RATING: 'rating',
+    WARRANTY: 'garansi'
+}
+```
+
+### 📋 Feature Extraction Patterns
+Anda bisa menentukan bagaimana engine mengekstrak fitur/kelebihan dari deskripsi produk:
+```typescript
+featurePatterns: [
+    /(?:fitur|feature|keunggulan)[:\s]*([^.]+)/gi,
+    /(?:•|✓)([^•✓\n]+)/g
+]
+```
+
 
 #### Isi file `assistant-proxy.php` (Server-side):
 ```php

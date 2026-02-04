@@ -1,5 +1,5 @@
-import { AssistantEngine } from './src/engine';
-import type { AssistantDataItem, AssistantConfig } from './src/types';
+import { AssistantEngine } from '../src/engine';
+import type { AssistantDataItem, AssistantConfig } from '../src/types';
 
 const mockData: AssistantDataItem[] = [
     {
@@ -43,4 +43,21 @@ const engine = new AssistantEngine(mockData, undefined, config);
     console.log("Intent:", res2.intent);
     console.log("Top Result (should be the one with badge/sale):", res2.results[0]?.title);
     console.log("Badge:", res2.results[0]?.badge_text);
+
+    console.log("\n--- Query 3: 'berapa harga iphone trus fiturnya apa?' (Compound Query) ---");
+    const res3 = await engine.search("berapa harga iphone trus fiturnya apa?");
+    console.log("Intent:", res3.intent);
+    console.log("Aggregated Answer:", res3.answer);
+
+    console.log("\n--- Test 4: Custom Schema Verification ---");
+    const customConfig: AssistantConfig = {
+        ...config,
+        schema: {
+            PRICE: 'price_val',
+            FEATURES: 'specs'
+        }
+    };
+    const customEngine = new AssistantEngine(mockData, undefined, customConfig);
+    const res4 = await customEngine.search("harga iphone");
+    console.log("Custom Schema Search Result:", res4.results[0]?.title);
 })();

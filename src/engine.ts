@@ -1,6 +1,21 @@
 import type { AssistantDataItem, AssistantResult, AssistantConfig, ComparisonItem, ComparisonResult } from "./types";
 import Fuse from "./lib/fuse";
 import { Stemmer, Tokenizer } from "./lib/sastrawi";
+import {
+    DEFAULT_PHONETIC_MAP,
+    DEFAULT_STOP_WORDS,
+    DEFAULT_SEMANTIC_MAP,
+    DEFAULT_SALES_TRIGGERS,
+    DEFAULT_CHAT_TRIGGERS,
+    DEFAULT_CONTACT_TRIGGERS,
+    DEFAULT_COMPARISON_LABELS,
+    DEFAULT_ATTRIBUTE_EXTRACTORS,
+    DEFAULT_LABEL_MAP,
+    DEFAULT_UI_CONFIG,
+    DEFAULT_CONJUNCTIONS,
+    DEFAULT_FEATURE_PATTERNS,
+    DEFAULT_SCHEMA
+} from "./defaults";
 
 export class AssistantEngine {
     private searchData: AssistantDataItem[];
@@ -10,6 +25,7 @@ export class AssistantEngine {
 
     private history: {
         lastCategory: string | null;
+        lastItemId: string | null;
         detectedEntities: Set<string>;
     };
 
@@ -30,6 +46,7 @@ export class AssistantEngine {
 
         this.history = {
             lastCategory: null,
+            lastItemId: null,
             detectedEntities: new Set(),
         };
 
@@ -55,8 +72,9 @@ export class AssistantEngine {
     }
 
     private autoCorrect(word: string): string {
-        if (!this.config.phoneticMap) return word;
-        for (const [correct, typos] of Object.entries(this.config.phoneticMap)) {
+        const phoneticMap = { ...DEFAULT_PHONETIC_MAP, ...(this.config.phoneticMap || {}) };
+
+        for (const [correct, typos] of Object.entries(phoneticMap)) {
             if (typos.includes(word)) return correct;
         }
         return word;
@@ -68,7 +86,7 @@ export class AssistantEngine {
             isUrgent: query.includes('!'),
         };
 
-        const stopWords = new Set(this.config.stopWords || []);
+        const stopWords = new Set([...DEFAULT_STOP_WORDS, ...(this.config.stopWords || [])]);
         // Step 0: Initial cleaning
         const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '');
         const rawWords = cleanQuery.split(/\s+/).filter(w => w.length > 1);
@@ -84,14 +102,16 @@ export class AssistantEngine {
         const filteredWords = allTokens.filter(w => !stopWords.has(w));
 
         const expansion: string[] = [];
+        const semanticMap = { ...DEFAULT_SEMANTIC_MAP, ...(this.config.semanticMap || {}) };
+
         filteredWords.forEach(w => {
-            if (this.config.semanticMap && this.config.semanticMap[w]) {
-                expansion.push(...this.config.semanticMap[w]);
+            if (semanticMap[w]) {
+                expansion.push(...semanticMap[w]);
             }
             // Also check expansion for stemmed version if different
             const stem = this.stemIndonesian(w);
-            if (stem !== w && this.config.semanticMap && this.config.semanticMap[stem]) {
-                expansion.push(...this.config.semanticMap[stem]);
+            if (stem !== w && semanticMap[stem]) {
+                expansion.push(...semanticMap[stem]);
             }
         });
 
@@ -116,6 +136,94 @@ export class AssistantEngine {
     }
 
     public async search(query: string): Promise<AssistantResult> {
+        // Compound Query Handling: Split query by conjunctions and punctuations
+        let conjunctions = this.config.conjunctions || DEFAULT_CONJUNCTIONS;
+
+        // Convert array of strings to regex if needed
+        if (Array.isArray(conjunctions)) {
+            const escaped = conjunctions.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            conjunctions = new RegExp(`\\s+(?:${escaped.join('|')})\\s+|[?!;]|,`, 'gi');
+        }
+
+        let subQueries = query.split(conjunctions as RegExp).map(q => q.trim()).filter(q => q.length > 0);
+
+        // Smart Trigger Splitting: If a sub-query still has multiple triggers from DIFFERENT intent categories, split it
+        const salesTriggers = { ...DEFAULT_SALES_TRIGGERS, ...(this.config.salesTriggers || {}) };
+
+        // Map each trigger word to its intent category
+        const triggerMap: Record<string, string> = {};
+        for (const [intent, words] of Object.entries(salesTriggers)) {
+            words.forEach(w => triggerMap[w.toLowerCase()] = intent);
+        }
+
+        const refinedQueries: string[] = [];
+        for (const subQ of subQueries) {
+            const words = subQ.split(/\s+/);
+            let current = "";
+            let currentIntentCategory: string | null = null;
+
+            for (let i = 0; i < words.length; i++) {
+                const word = words[i].toLowerCase();
+                const cleanWord = word.replace(/[^\w]/g, '');
+                const intentCategory = triggerMap[cleanWord];
+
+                // Split if we find a trigger that belongs to a DIFFERENT category than what we've seen in this sub-query
+                if (intentCategory && currentIntentCategory && intentCategory !== currentIntentCategory && current.length > 0) {
+                    refinedQueries.push(current.trim());
+                    current = words[i];
+                    currentIntentCategory = intentCategory;
+                } else {
+                    if (intentCategory) currentIntentCategory = intentCategory;
+                    current += (current ? " " : "") + words[i];
+                }
+            }
+            if (current) refinedQueries.push(current.trim());
+        }
+
+        subQueries = refinedQueries;
+
+        if (subQueries.length > 1) {
+            let combinedResults: AssistantDataItem[] = [];
+            let combinedAnswerParts: string[] = [];
+            let combinedEntities: Record<string, boolean> = {};
+            let finalIntent = 'compound';
+            let maxConfidence = 0;
+
+            for (const subQ of subQueries) {
+                const subResult = await this.executeSubSearch(subQ);
+
+                subResult.results.forEach(item => {
+                    if (!combinedResults.find(r => r.title === item.title)) {
+                        combinedResults.push(item);
+                    }
+                });
+
+                if (subResult.answer) combinedAnswerParts.push(subResult.answer);
+                combinedEntities = { ...combinedEntities, ...subResult.entities };
+                maxConfidence = Math.max(maxConfidence, subResult.confidence);
+            }
+
+            const joiner = this.config.subSearchJoiner || DEFAULT_UI_CONFIG.subSearchJoiner;
+            const limit = this.config.resultLimit || DEFAULT_UI_CONFIG.resultLimit;
+
+            return {
+                results: combinedResults.slice(0, limit),
+                intent: finalIntent,
+                entities: combinedEntities,
+                confidence: maxConfidence,
+                answer: combinedAnswerParts.join(joiner).replace(/\.\./g, '.')
+            };
+        }
+
+        return this.executeSubSearch(query);
+    }
+
+    private async executeSubSearch(query: string): Promise<AssistantResult> {
+        const limit = this.config.resultLimit || DEFAULT_UI_CONFIG.resultLimit;
+        const locale = this.config.locale || DEFAULT_UI_CONFIG.locale;
+        const currency = this.config.currencySymbol || DEFAULT_UI_CONFIG.currencySymbol;
+        const templates = { ...DEFAULT_UI_CONFIG.answerTemplates, ...(this.config.answerTemplates || {}) };
+
         // Handle Remote Mode (Supports single or multiple APIs)
         if (this.config.searchMode === 'remote' && this.config.apiUrl) {
             try {
@@ -132,7 +240,6 @@ export class AssistantEngine {
                     }
                 }));
 
-                // Merge all results
                 const mergedResults = results.reduce((acc, curr) => {
                     acc.results.push(...(curr.results || []));
                     if (curr.intent && curr.intent !== 'fuzzy') acc.intent = curr.intent;
@@ -141,16 +248,15 @@ export class AssistantEngine {
                 }, { results: [], intent: 'fuzzy', entities: {}, confidence: 0 } as AssistantResult);
 
                 if (mergedResults.results.length > 0) {
-                    // Re-calculate scores for remote results to apply local sales-driven boosts
-                    const processed = this.preprocess(query);
+                    const processedForRemote = this.preprocess(query);
                     const ranked = mergedResults.results.map((item: AssistantDataItem) => ({
                         item,
-                        score: this.calculateScore(item, processed, 0.5) // 0.5 as neutral fuse score for remote
+                        score: this.calculateScore(item, processedForRemote, 0.5)
                     })).sort((a: any, b: any) => b.score - a.score);
 
                     return {
                         ...mergedResults,
-                        results: ranked.map((r: any) => r.item).slice(0, 5),
+                        results: ranked.map((r: any) => r.item).slice(0, limit),
                         confidence: Math.min(Math.round(ranked[0].score * 2), 100)
                     };
                 }
@@ -163,12 +269,20 @@ export class AssistantEngine {
         let candidates: any[] = [];
 
         if (this.fuse) {
-            // Use OR operator for semantic expansions
             const fuseResults = this.fuse.search(processed.expanded.join(' | '));
             candidates = fuseResults.map((f: any) => ({
                 item: f.item,
                 fuseScore: f.score
             }));
+        }
+
+        // Add history context to candidates if it's not already there
+        if (this.history.lastItemId) {
+            const lastItem = this.searchData.find(i => i.title === this.history.lastItemId);
+            if (lastItem && !candidates.find(c => c.item.title === lastItem.title)) {
+                // Score 12 ensures it passes the standard 10 threshold for results
+                candidates.push({ item: lastItem, fuseScore: 0.1 });
+            }
         }
 
         const finalResults = candidates.map(c => {
@@ -180,32 +294,60 @@ export class AssistantEngine {
 
         if (finalResults.length > 0) {
             this.history.lastCategory = finalResults[0].item.category;
+            this.history.lastItemId = finalResults[0].item.title;
         }
 
         const intent = this.detectIntent(processed);
         const isConversational = intent.startsWith('chat_');
 
-        // Fallback friendly responses for small talk
-        let fallbackAnswer = "";
-        if (intent === 'chat_greeting') {
-            fallbackAnswer = this.config.fallbackIntentResponses?.['chat_greeting'] || "Halo! Ada yang bisa saya bantu hari ini? Anda bisa tanya tentang produk, harga, atau promo kami.";
-        } else if (intent === 'chat_thanks') {
-            fallbackAnswer = this.config.fallbackIntentResponses?.['chat_thanks'] || "Sama-sama! Senang bisa membantu. Ada lagi yang ingin ditanyakan?";
-        } else if (intent === 'chat_contact') {
-            fallbackAnswer = this.config.fallbackIntentResponses?.['chat_contact'] || "Anda bisa menghubungi kami melalui WhatsApp atau Email. Ingin saya hubungkan sekarang?";
-        }
-
         const topMatches = finalResults
             .filter(r => r.score > 10 || (isConversational && r.score > 5))
             .map(r => r.item)
-            .slice(0, 5);
+            .slice(0, limit);
+
+        // Dynamic Answer Logic based on Intent & Templates
+        let answer = topMatches[0]?.answer || "";
+        if (topMatches.length > 0) {
+            const topItem = topMatches[0];
+            const attributes = this.extractAttributes(topItem);
+
+            if (intent === 'sales_harga') {
+                const harga = topItem.sale_price || topItem.price_numeric;
+                if (harga) {
+                    answer = templates.price!
+                        .replace('{title}', topItem.title)
+                        .replace('{currency}', currency)
+                        .replace('{price}', harga.toLocaleString(locale));
+                }
+            } else if (intent === 'sales_fitur' || processed.tokens.includes('fitur') || processed.tokens.includes('fasilitas') || processed.tokens.includes('keunggulan')) {
+                const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
+                const fitur = attributes[schema.FEATURES] || topItem.description;
+                answer = templates.features!
+                    .replace('{title}', topItem.title)
+                    .replace('{features}', fitur);
+            }
+        }
+
+        // Fallback friendly responses
+        if (!answer) {
+            const fallback = { ...DEFAULT_UI_CONFIG.fallbackResponses, ...(this.config.fallbackIntentResponses || {}) };
+            if (intent === 'chat_greeting') {
+                answer = fallback['chat_greeting']!;
+            } else if (intent === 'chat_thanks') {
+                answer = fallback['chat_thanks']!;
+            } else if (intent === 'chat_contact') {
+                answer = fallback['chat_contact']!;
+            } else if (!isConversational && topMatches.length === 0) {
+                answer = templates.noResults!;
+            }
+        }
 
         return {
             results: topMatches,
             intent: intent,
             entities: processed.entities,
             confidence: finalResults.length > 0 ? Math.min(Math.round(finalResults[0].score * 2), 100) : (isConversational ? 80 : 0),
-            answer: fallbackAnswer || (topMatches[0]?.answer || "")
+            answer: answer
         };
     }
 
@@ -269,6 +411,7 @@ export class AssistantEngine {
 
         // D. Context & Business Logic
         if (this.history.lastCategory === item.category) score += 10;
+        if (this.history.lastItemId === item.title) score += 20; // Stronger boost for same item
         if (item.is_recommended) score += 25;
 
         // E. Punctuation Intelligence Boost
@@ -280,7 +423,7 @@ export class AssistantEngine {
         }
 
         if (processed.signals?.isUrgent) {
-            score += 10; // General boost for urgent queries
+            score += 10;
         }
 
         const intent = this.detectIntent(processed);
@@ -294,14 +437,7 @@ export class AssistantEngine {
     }
 
     private detectIntent(processed: any): string {
-        // Multi-language default sales triggers
-        const defaultSalesTriggers = {
-            'beli': ['beli', 'pesan', 'ambil', 'order', 'checkout', 'booking', 'buy', 'purchase', 'get'],
-            'harga': ['harga', 'biaya', 'price', 'budget', 'bayar', 'cicilan', 'dp', 'murah', 'cost', 'payment', 'cheap'],
-            'promo': ['promo', 'diskon', 'discount', 'sale', 'hemat', 'bonus', 'voucher', 'off']
-        };
-
-        const triggers = { ...defaultSalesTriggers, ...(this.config.salesTriggers || {}) };
+        const triggers = { ...DEFAULT_SALES_TRIGGERS, ...(this.config.salesTriggers || {}) };
 
         // Stem tokens for intent matching as well
         const stemmedTokens = processed.tokens.map((t: string) => this.stemIndonesian(t));
@@ -310,20 +446,13 @@ export class AssistantEngine {
             if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `sales_${intent}`;
         }
 
-        // Conversational triggers (Greeting, Thanks)
-        const defaultChatTriggers = {
-            'greeting': ['halo', 'halo', 'hi', 'helo', 'hey', 'pagi', 'siang', 'sore', 'malam', 'assalamualaikum', 'permisi', 'hello'],
-            'thanks': ['terima kasih', 'thanks', 'tq', 'syukron', 'makasih', 'oke', 'sip', 'mantap']
-        };
-        const chatTriggers = { ...defaultChatTriggers, ...(this.config.conversationTriggers || {}) };
+        const chatTriggers = { ...DEFAULT_CHAT_TRIGGERS, ...(this.config.conversationTriggers || {}) };
 
         for (const [intent, tokens] of Object.entries(chatTriggers)) {
             if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `chat_${intent}`;
         }
 
-        // Contact triggers (WhatsApp, Email, etc.)
-        const defaultContactTriggers = ['kontak', 'contact', 'whatsapp', 'wa', 'email', 'telepon', 'phone', 'call', 'hubungi'];
-        const contactTriggers = [...defaultContactTriggers, ...(this.config.contactTriggers || [])];
+        const contactTriggers = [...DEFAULT_CONTACT_TRIGGERS, ...(this.config.contactTriggers || [])];
         if (contactTriggers.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) {
             return 'chat_contact';
         }
@@ -353,16 +482,7 @@ export class AssistantEngine {
      * Get labels for comparison output from config
      */
     private getComparisonLabels() {
-        const defaults = {
-            title: 'Product',
-            price: 'Price',
-            recommendation: 'Recommendation',
-            bestChoice: 'Best Choice',
-            reasons: 'Reasons',
-            noProducts: 'No products found to compare.',
-            vsLabel: 'vs'
-        };
-        return { ...defaults, ...(this.config.comparisonLabels || {}) };
+        return { ...DEFAULT_COMPARISON_LABELS, ...(this.config.comparisonLabels || {}) };
     }
 
     /**
@@ -401,28 +521,8 @@ export class AssistantEngine {
         const title = (item.title || '').toLowerCase();
         const fullText = `${title} ${description}`;
 
-        // Default attribute patterns (can be overridden via config)
-        const defaultExtractors: Record<string, RegExp> = {
-            // Price patterns
-            'harga': /(?:harga|price|biaya)[:\s]*(?:rp\.?|idr)?\s*([\d.,]+)/i,
-            // Capacity/size patterns
-            'kapasitas': /(?:kapasitas|capacity)[:\s]*([\d.,]+\s*(?:gb|mb|tb|liter|kg|gram|ml|l|g))/i,
-            // Speed patterns
-            'kecepatan': /(?:kecepatan|speed)[:\s]*([\d.,]+\s*(?:mbps|gbps|rpm|mhz|ghz))/i,
-            // Warranty patterns
-            'garansi': /(?:garansi|warranty)[:\s]*([\d]+\s*(?:tahun|bulan|year|month|hari|day)s?)/i,
-            // Rating patterns
-            'rating': /(?:rating|bintang|star)[:\s]*([\d.,]+)/i,
-            // Material patterns
-            'material': /(?:bahan|material)[:\s]*([a-zA-Z\s]+?)(?:\.|,|$)/i,
-            // Color patterns
-            'warna': /(?:warna|color|colour)[:\s]*([a-zA-Z\s]+?)(?:\.|,|$)/i,
-            // Dimension patterns
-            'ukuran': /(?:ukuran|size|dimensi|dimension)[:\s]*([\d.,x\s]+(?:cm|mm|m|inch)?)/i,
-        };
-
         // Merge with custom extractors from config
-        const extractors = { ...defaultExtractors };
+        const extractors = { ...DEFAULT_ATTRIBUTE_EXTRACTORS };
         if (this.config.attributeExtractors) {
             for (const [key, pattern] of Object.entries(this.config.attributeExtractors)) {
                 extractors[key] = typeof pattern === 'string' ? new RegExp(pattern, 'i') : pattern;
@@ -437,30 +537,30 @@ export class AssistantEngine {
             }
         }
 
+        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
+
         // Add existing structured data
-        if (item.price_numeric) attributes['harga'] = item.price_numeric;
-        if (item.sale_price) attributes['harga_promo'] = item.sale_price;
-        if (item.badge_text) attributes['badge'] = item.badge_text;
-        if (item.is_recommended) attributes['direkomendasikan'] = true;
+        if (item.price_numeric) attributes[schema.PRICE] = item.price_numeric;
+        if (item.sale_price) attributes[schema.PRICE_PROMO] = item.sale_price;
+        if (item.badge_text) attributes[schema.BADGE] = item.badge_text;
+        if (item.is_recommended) attributes[schema.RECOMMENDED] = true;
 
         // Extract features from description (bullet points or comma-separated)
-        const featurePatterns = [
-            /(?:fitur|feature|keunggulan|kelebihan)[:\s]*([^.]+)/gi,
-            /(?:•|▪|★|✓|✔|-)([^•▪★✓✔\-\n]+)/g
-        ];
+        let patterns = this.config.featurePatterns || DEFAULT_FEATURE_PATTERNS;
+        const featurePatterns = patterns.map((p: RegExp | string) => typeof p === 'string' ? new RegExp(p, 'gi') : p);
 
         const features: string[] = [];
         for (const pattern of featurePatterns) {
             let match;
             while ((match = pattern.exec(fullText)) !== null) {
-                const feature = match[1].trim();
-                if (feature.length > 3 && feature.length < 100) {
+                const feature = match[1]?.trim();
+                if (feature && feature.length > 3 && feature.length < 100) {
                     features.push(feature);
                 }
             }
         }
         if (features.length > 0) {
-            attributes['fitur'] = features.slice(0, 5).join('; ');
+            attributes[schema.FEATURES] = features.slice(0, 5).join('; ');
         }
 
         return attributes;
@@ -471,6 +571,7 @@ export class AssistantEngine {
      */
     private calculateComparisonScore(item: AssistantDataItem, attributes: Record<string, string | number | boolean>): number {
         let score = 0;
+        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
 
         // Price advantage (lower is better, sale price bonus)
         if (item.sale_price && item.price_numeric) {
@@ -495,14 +596,14 @@ export class AssistantEngine {
         score += Math.min(featureCount * 5, 25);
 
         // Rating bonus
-        if (attributes['rating']) {
-            const rating = parseFloat(String(attributes['rating']));
+        if (attributes[schema.RATING]) {
+            const rating = parseFloat(String(attributes[schema.RATING]));
             if (!isNaN(rating)) score += rating * 5;
         }
 
         // Warranty bonus
-        if (attributes['garansi']) {
-            const warrantyMatch = String(attributes['garansi']).match(/(\d+)/);
+        if (attributes[schema.WARRANTY]) {
+            const warrantyMatch = String(attributes[schema.WARRANTY]).match(/(\d+)/);
             if (warrantyMatch) {
                 const years = parseInt(warrantyMatch[1]);
                 score += Math.min(years * 10, 30);
@@ -522,30 +623,31 @@ export class AssistantEngine {
         // Price comparison
         if (item.salePrice && item.price) {
             const discount = Math.round(((item.price - item.salePrice) / item.price) * 100);
-            reasons.push(`Diskon ${discount}% dari harga normal`);
+            reasons.push(labels.discount!.replace('{discount}', discount.toString()));
         }
 
         // Cheapest check
         const prices = allItems.filter(i => i.price || i.salePrice).map(i => i.salePrice || i.price || Infinity);
         const myPrice = item.salePrice || item.price || Infinity;
         if (myPrice === Math.min(...prices) && prices.length > 1) {
-            reasons.push('Harga paling terjangkau');
+            reasons.push(labels.cheapest!);
         }
 
         // Most features
         const featureCounts = allItems.map(i => Object.keys(i.attributes).length);
         if (Object.keys(item.attributes).length === Math.max(...featureCounts) && featureCounts.length > 1) {
-            reasons.push('Fitur paling lengkap');
+            reasons.push(labels.mostFeatures!);
         }
 
         // Has warranty
-        if (item.attributes['garansi']) {
-            reasons.push(`Garansi: ${item.attributes['garansi']}`);
+        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
+        if (item.attributes[schema.WARRANTY]) {
+            reasons.push(labels.warranty!.replace('{warranty}', String(item.attributes[schema.WARRANTY])));
         }
 
         // Is recommended
         if (item.isRecommended) {
-            reasons.push('Direkomendasikan oleh tim kami');
+            reasons.push(labels.teamRecommendation!);
         }
 
         return reasons.slice(0, 4);
@@ -575,6 +677,9 @@ export class AssistantEngine {
         // Body rows
         html += `<tbody>`;
 
+        const locale = this.config.locale || DEFAULT_UI_CONFIG.locale;
+        const currency = this.config.currencySymbol || DEFAULT_UI_CONFIG.currencySymbol;
+
         // Price row (always show if available)
         const hasPrice = items.some(i => i.price || i.salePrice);
         if (hasPrice) {
@@ -583,11 +688,11 @@ export class AssistantEngine {
             for (const item of items) {
                 let priceHtml = '-';
                 if (item.salePrice && item.price && item.salePrice < item.price) {
-                    priceHtml = `<span style="text-decoration:line-through;color:#999;">Rp ${item.price.toLocaleString('id-ID')}</span><br><span style="color:#e53935;font-weight:bold;">Rp ${item.salePrice.toLocaleString('id-ID')}</span>`;
+                    priceHtml = `<span style="text-decoration:line-through;color:#999;">${currency} ${item.price.toLocaleString(locale)}</span><br><span style="color:#e53935;font-weight:bold;">${currency} ${item.salePrice.toLocaleString(locale)}</span>`;
                 } else if (item.price) {
-                    priceHtml = `Rp ${item.price.toLocaleString('id-ID')}`;
+                    priceHtml = `${currency} ${item.price.toLocaleString(locale)}`;
                 } else if (item.salePrice) {
-                    priceHtml = `<span style="color:#e53935;font-weight:bold;">Rp ${item.salePrice.toLocaleString('id-ID')}</span>`;
+                    priceHtml = `<span style="color:#e53935;font-weight:bold;">${currency} ${item.salePrice.toLocaleString(locale)}</span>`;
                 }
                 html += `<td style="padding:10px;border:1px solid #ddd;text-align:center;">${priceHtml}</td>`;
             }
@@ -595,8 +700,9 @@ export class AssistantEngine {
         }
 
         // Attribute rows
+        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
         for (const attr of attributeLabels) {
-            if (attr === 'harga' || attr === 'harga_promo') continue; // Already handled
+            if (attr === schema.PRICE || attr === schema.PRICE_PROMO) continue; // Already handled
             html += `<tr>`;
             html += `<td style="padding:10px;border:1px solid #ddd;font-weight:bold;">${this.formatAttributeLabel(attr)}</td>`;
             for (const item of items) {
@@ -645,17 +751,20 @@ export class AssistantEngine {
         }
         md += '\n';
 
+        const locale = this.config.locale || DEFAULT_UI_CONFIG.locale;
+        const currency = this.config.currencySymbol || DEFAULT_UI_CONFIG.currencySymbol;
+
         // Price row
         const hasPrice = items.some(i => i.price || i.salePrice);
         if (hasPrice) {
             md += `| **${labels.price}** |`;
             for (const item of items) {
                 if (item.salePrice && item.price && item.salePrice < item.price) {
-                    md += ` ~~Rp ${item.price.toLocaleString('id-ID')}~~ **Rp ${item.salePrice.toLocaleString('id-ID')}** |`;
+                    md += ` ~~${currency} ${item.price.toLocaleString(locale)}~~ **${currency} ${item.salePrice.toLocaleString(locale)}** |`;
                 } else if (item.price) {
-                    md += ` Rp ${item.price.toLocaleString('id-ID')} |`;
+                    md += ` ${currency} ${item.price.toLocaleString(locale)} |`;
                 } else if (item.salePrice) {
-                    md += ` **Rp ${item.salePrice.toLocaleString('id-ID')}** |`;
+                    md += ` **${currency} ${item.salePrice.toLocaleString(locale)}** |`;
                 } else {
                     md += ` - |`;
                 }
@@ -664,8 +773,9 @@ export class AssistantEngine {
         }
 
         // Attribute rows
+        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
         for (const attr of attributeLabels) {
-            if (attr === 'harga' || attr === 'harga_promo') continue;
+            if (attr === schema.PRICE || attr === schema.PRICE_PROMO) continue;
             md += `| **${this.formatAttributeLabel(attr)}** |`;
             for (const item of items) {
                 const value = item.attributes[attr];
@@ -689,21 +799,8 @@ export class AssistantEngine {
      * Format attribute label for display
      */
     private formatAttributeLabel(attr: string): string {
-        const labelMap: Record<string, string> = {
-            'harga': 'Harga',
-            'harga_promo': 'Harga Promo',
-            'kapasitas': 'Kapasitas',
-            'kecepatan': 'Kecepatan',
-            'garansi': 'Garansi',
-            'rating': 'Rating',
-            'material': 'Material',
-            'warna': 'Warna',
-            'ukuran': 'Ukuran',
-            'fitur': 'Fitur',
-            'badge': 'Badge',
-            'direkomendasikan': 'Rekomendasi'
-        };
-        return labelMap[attr] || attr.charAt(0).toUpperCase() + attr.slice(1);
+        const labels = { ...DEFAULT_LABEL_MAP, ...(this.config.attributeLabels || {}) };
+        return labels[attr] || attr.charAt(0).toUpperCase() + attr.slice(1);
     }
 
     /**
@@ -726,11 +823,11 @@ export class AssistantEngine {
 
         // If still no candidates, try to extract category from query
         if (candidates.length === 0) {
-            const processed = this.preprocess(query);
+            const processedForCompare = this.preprocess(query);
             for (const item of this.searchData) {
                 const titleLower = item.title.toLowerCase();
                 const categoryLower = item.category.toLowerCase();
-                if (processed.tokens.some(t => titleLower.includes(t) || categoryLower.includes(t))) {
+                if (processedForCompare.tokens.some(t => titleLower.includes(t) || categoryLower.includes(t))) {
                     candidates.push(item);
                 }
             }

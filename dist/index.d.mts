@@ -64,8 +64,26 @@ interface AssistantConfig {
         reasons?: string;
         noProducts?: string;
         vsLabel?: string;
+        discount?: string;
+        cheapest?: string;
+        mostFeatures?: string;
+        warranty?: string;
+        teamRecommendation?: string;
     };
     attributeExtractors?: Record<string, RegExp | string>;
+    featurePatterns?: (RegExp | string)[];
+    attributeLabels?: Record<string, string>;
+    schema?: Record<string, string>;
+    conjunctions?: string[] | RegExp;
+    locale?: string;
+    currencySymbol?: string;
+    answerTemplates?: {
+        price?: string;
+        features?: string;
+        noResults?: string;
+    };
+    resultLimit?: number;
+    subSearchJoiner?: string;
 }
 interface IntentRule {
     intent: string;
@@ -101,6 +119,7 @@ declare class AssistantEngine {
     private preprocess;
     private extractEntities;
     search(query: string): Promise<AssistantResult>;
+    private executeSubSearch;
     private calculateDiceCoefficient;
     private stemIndonesian;
     private calculateScore;
