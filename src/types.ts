@@ -12,6 +12,8 @@ export interface AssistantDataItem {
     cta_url?: string;
     image_url?: string;
     is_recommended?: boolean;
+    attributes?: Record<string, string>;
+    scoreBreakdown?: Record<string, number>;
     [key: string]: any; // Allow for custom extra data
 }
 
@@ -27,6 +29,7 @@ export interface AssistantResult {
         isUrgent: boolean;
         intensity: 'low' | 'medium' | 'high';
     };
+    scoreBreakdown?: Record<string, number>;
 }
 
 // Comparison feature types

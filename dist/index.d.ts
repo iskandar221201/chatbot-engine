@@ -184,6 +184,8 @@ interface AssistantDataItem {
     cta_url?: string;
     image_url?: string;
     is_recommended?: boolean;
+    attributes?: Record<string, string>;
+    scoreBreakdown?: Record<string, number>;
     [key: string]: any;
 }
 interface AssistantResult {
@@ -198,6 +200,7 @@ interface AssistantResult {
         isUrgent: boolean;
         intensity: 'low' | 'medium' | 'high';
     };
+    scoreBreakdown?: Record<string, number>;
 }
 interface ComparisonItem {
     title: string;
@@ -452,11 +455,16 @@ declare class PreprocessingEngine {
     private stemmer;
     private tokenizer;
     private config;
+    private stemCache;
     constructor(config?: PreprocessingConfig);
     /**
      * Correct common typos using phonetic/pattern matching
      */
     autoCorrect(word: string): string;
+    /**
+     * Memoized Indonesian Stemming
+     */
+    stem(word: string): string;
     /**
      * Main preprocessing pipeline
      */
@@ -469,10 +477,6 @@ declare class PreprocessingEngine {
      * Extract attributes from raw text (Description/Content)
      */
     extractAttributes(item: AssistantDataItem): Record<string, string>;
-    /**
-     * Direct Indonesian stemming
-     */
-    stem(word: string): string;
 }
 
 /**
@@ -489,7 +493,10 @@ declare class ScoringEngine {
     /**
      * Main scoring function for a single item
      */
-    calculate(item: AssistantDataItem, processed: any, fuseScore: number, intent: string, contextState: any): number;
+    calculate(item: AssistantDataItem, processed: any, fuseScore: number, intent: string, contextState: any): {
+        score: number;
+        breakdown: Record<string, number>;
+    };
     /**
      * Calculate similarity between two strings using bigrams
      */

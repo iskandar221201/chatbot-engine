@@ -35,6 +35,7 @@ export class PreprocessingEngine {
     private stemmer: Stemmer;
     private tokenizer: Tokenizer;
     private config: PreprocessingConfig;
+    private stemCache: Map<string, string> = new Map();
 
     constructor(config: PreprocessingConfig = {}) {
         this.config = config;
@@ -46,11 +47,21 @@ export class PreprocessingEngine {
      * Correct common typos using phonetic/pattern matching
      */
     public autoCorrect(word: string): string {
-        const phoneticMap = { ...DEFAULT_PHONETIC_MAP, ...(this.config.phoneticMap || {}) };
+        const phoneticMap = this.config.phoneticMap || DEFAULT_PHONETIC_MAP;
         for (const [correct, typos] of Object.entries(phoneticMap)) {
             if (typos.includes(word)) return correct;
         }
         return word;
+    }
+
+    /**
+     * Memoized Indonesian Stemming
+     */
+    public stem(word: string): string {
+        if (this.stemCache.has(word)) return this.stemCache.get(word)!;
+        const result = this.stemmer.stem(word);
+        this.stemCache.set(word, result);
+        return result;
     }
 
     /**
@@ -76,7 +87,7 @@ export class PreprocessingEngine {
         });
 
         // Indonesian Stemming
-        const stemmedWords = correctedWords.map(w => this.stemmer.stem(w));
+        const stemmedWords = correctedWords.map(w => this.stem(w));
 
         // Combine and Filter
         const allTokens = [...new Set([...correctedWords, ...stemmedWords])];
@@ -88,7 +99,7 @@ export class PreprocessingEngine {
 
         filteredWords.forEach(w => {
             if (semanticMap[w]) expansion.push(...semanticMap[w]);
-            const stem = this.stemmer.stem(w);
+            const stem = this.stem(w);
             if (stem !== w && semanticMap[stem]) expansion.push(...semanticMap[stem]);
         });
 
@@ -133,9 +144,6 @@ export class PreprocessingEngine {
     /**
      * Direct Indonesian stemming
      */
-    public stem(word: string): string {
-        return this.stemmer.stem(word);
-    }
 }
 
 export default PreprocessingEngine;

@@ -185,10 +185,13 @@ export class QueryOrchestrator {
         const intent = this.engines.intent.detect(processed.tokens.join(' '), processed.tokens, stemmedTokens);
 
         // 6. Ranking (ScoringEngine)
-        const finalResults = candidates.map(c => ({
-            item: c.item,
-            score: this.engines.scoring.calculate(c.item, processed, c.fuseScore, intent, contextState)
-        })).sort((a, b) => b.score - a.score);
+        const finalResults = candidates.map(c => {
+            const { score, breakdown } = this.engines.scoring.calculate(c.item, processed, c.fuseScore, intent, contextState);
+            return {
+                item: { ...c.item, scoreBreakdown: breakdown },
+                score
+            };
+        }).sort((a, b) => b.score - a.score);
 
         const isConversational = intent.startsWith('chat_');
         const topMatches = finalResults
@@ -207,7 +210,8 @@ export class QueryOrchestrator {
                 label: sentiment.label,
                 isUrgent: sentiment.isUrgent,
                 intensity: sentiment.intensity
-            }
+            },
+            scoreBreakdown: finalResults.length > 0 ? finalResults[0].item.scoreBreakdown : undefined
         };
 
         this.engines.context.update(finalResult);
@@ -252,10 +256,13 @@ export class QueryOrchestrator {
                 const contextState = this.engines.context.getState();
                 const intent = mergedResults.intent || 'fuzzy';
 
-                const ranked = mergedResults.results.map((item: AssistantDataItem) => ({
-                    item,
-                    score: this.engines.scoring.calculate(item, processedForRemote, 0.5, intent, contextState)
-                })).sort((a: any, b: any) => b.score - a.score);
+                const ranked = mergedResults.results.map((item: AssistantDataItem) => {
+                    const { score, breakdown } = this.engines.scoring.calculate(item, processedForRemote, 0.5, intent, contextState);
+                    return {
+                        item: { ...item, scoreBreakdown: breakdown },
+                        score
+                    };
+                }).sort((a: any, b: any) => b.score - a.score);
 
                 return {
                     ...mergedResults,
@@ -266,7 +273,8 @@ export class QueryOrchestrator {
                         label: sentiment.label,
                         isUrgent: sentiment.isUrgent,
                         intensity: sentiment.intensity
-                    }
+                    },
+                    scoreBreakdown: ranked.length > 0 ? ranked[0].item.scoreBreakdown : undefined
                 };
             }
         } catch (error) {

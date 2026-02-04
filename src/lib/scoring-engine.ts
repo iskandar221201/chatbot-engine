@@ -25,59 +25,73 @@ export class ScoringEngine {
         fuseScore: number,
         intent: string,
         contextState: any
-    ): number {
-        let score = (1 - fuseScore) * 10;
+    ): { score: number, breakdown: Record<string, number> } {
+        const breakdown: Record<string, number> = {
+            fuzzyMatch: Math.round((1 - fuseScore) * 10),
+            tokenMatch: 0,
+            fieldBoost: 0,
+            contextBoost: 0,
+            psychologyBoost: 0,
+            intentBoost: 0,
+            penalty: 0
+        };
+
+        let score = breakdown.fuzzyMatch;
         const titleLower = item.title.toLowerCase();
         const fullContent = (item.title + ' ' + (item.keywords || []).join(' ') + ' ' + item.description + ' ' + (item.content || '')).toLowerCase();
 
         // 1. Token & N-gram Matching
         processed.tokens.forEach((token: string, i: number) => {
             if (fullContent.includes(token)) {
-                score += 10;
+                let tokenScore = 10;
                 if (i > 0 && fullContent.includes(processed.tokens[i - 1] + ' ' + token)) {
-                    score += 8;
+                    tokenScore += 8;
                 }
+                breakdown.tokenMatch += tokenScore;
             }
             const dice = this.calculateDiceCoefficient(token, titleLower);
             if (dice > 0.4) {
-                score += (dice * 15);
+                breakdown.tokenMatch += Math.round(dice * 15);
             }
         });
 
         // 2. Field Weighting
         processed.tokens.forEach((token: string) => {
-            if (titleLower.includes(token)) score += 25;
-            if (item.category.toLowerCase().includes(token)) score += 25;
+            if (titleLower.includes(token)) breakdown.fieldBoost += 25;
+            if (item.category.toLowerCase().includes(token)) breakdown.fieldBoost += 25;
         });
 
         // 3. Contextual Boosting
-        if (contextState.lastCategory === item.category) score += 10;
+        if (contextState.lastCategory === item.category) breakdown.contextBoost += 10;
         if (contextState.lastItemId === item.title || contextState.lockedEntityId === item.title) {
-            score += 30;
+            breakdown.contextBoost += 30;
         }
 
         // 4. Psychology & Recommendation Boosting
-        if (item.is_recommended) score += 30;
+        if (item.is_recommended) breakdown.psychologyBoost += 30;
 
         // 5. Intent-Based Boosting
         if (processed.signals?.isUrgent) {
-            score += 10;
+            breakdown.intentBoost += 10;
             if (item.category.toLowerCase().match(/stok|ready|cabang/)) {
-                score += 25;
+                breakdown.intentBoost += 25;
             }
         }
 
         if (intent.startsWith('sales_')) {
-            if (item.price_numeric || item.sale_price) score += 30;
-            if (item.category.toLowerCase().match(/produk|layanan/)) score += 20;
+            if (item.price_numeric || item.sale_price) breakdown.intentBoost += 30;
+            if (item.category.toLowerCase().match(/produk|layanan/)) breakdown.intentBoost += 20;
         }
 
         // 6. Penalty for low-value content (Crawler Pages)
         if (item.category === (this.config.crawlerCategory || 'Page')) {
-            score -= 30;
+            breakdown.penalty -= 30;
         }
 
-        return score;
+        // Final aggregate score
+        score += breakdown.tokenMatch + breakdown.fieldBoost + breakdown.contextBoost + breakdown.psychologyBoost + breakdown.intentBoost + breakdown.penalty;
+
+        return { score, breakdown };
     }
 
     /**

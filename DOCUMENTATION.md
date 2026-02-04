@@ -247,8 +247,27 @@ const engineWithRef = new AssistantEngine(data, undefined, {
 ### L. Relevancy & Ranking (ScoringEngine) ⚖️
 Logika penilaian hasil pencarian (Dice Coefficient, weighting, contextual boosting) dikelola oleh `ScoringEngine`. Ini memungkinkan penggantian algoritma perankingan tanpa mengubah alur pencarian.
 
-### M. Search Orchestration (QueryOrchestrator) 🧠
-"Otak" dari pipa pencarian yang mengoordinasikan semua sub-engine (Preprocessing -> Intent -> Scoring -> Response). Ia juga menangani pemisahan *Compound Queries* dan koordinasi antara pencarian lokal/remote.
+### N. Search Transparency (Scoring Breakdown) 🔍
+Setiap hasil pencarian kini menyertakan `scoreBreakdown` yang menjelaskan bobot penilaian:
+
+```typescript
+const result = await engine.search("samsung galaxy");
+console.log(result.scoreBreakdown);
+/* Output:
+{
+  fuzzyMatch: 9,
+  tokenMatch: 25,
+  fieldBoost: 50,
+  contextBoost: 0,
+  psychologyBoost: 30,
+  intentBoost: 20,
+  penalty: 0
+}
+*/
+```
+
+### O. Performance Optimization (Memoization) ⚡
+`PreprocessingEngine` secara otomatis melakukan *memoization* (caching) pada proses *stemming* bahasa Indonesia. Hal ini mengurangi beban CPU secara signifikan saat menangani query berulang atau teks yang panjang.
 
 
 ---
