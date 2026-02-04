@@ -91,6 +91,13 @@ export interface AssistantConfig {
     };
     resultLimit?: number;
     subSearchJoiner?: string;
+    // UI Templates for customization
+    uiTemplates?: {
+        renderUserMessage?: (text: string) => string;
+        renderAssistantContainer?: (contentHTML: string, result: AssistantResult) => string;
+        renderResultCard?: (item: AssistantDataItem, index: number, isPrimary: boolean) => string;
+        renderComparison?: (comparison: ComparisonResult) => string;
+    };
 }
 
 export interface IntentRule {

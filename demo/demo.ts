@@ -60,4 +60,9 @@ const engine = new AssistantEngine(mockData, undefined, config);
     const customEngine = new AssistantEngine(mockData, undefined, customConfig);
     const res4 = await customEngine.search("harga iphone");
     console.log("Custom Schema Search Result:", res4.results[0]?.title);
+
+    console.log("\n--- Query 5: 'mau kontak' (Should be chat_contact, not sales_beli) ---");
+    const res5 = await engine.search("mau kontak");
+    console.log("Intent:", res5.intent);
+    console.log("Expected: chat_contact, Actual:", res5.intent);
 })();

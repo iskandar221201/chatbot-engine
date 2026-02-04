@@ -276,7 +276,49 @@ const result = await engine.search("permintaan user");
 
 ---
 
-## 5. Session Persistence
+## 6. Full UI Customization (V3) 🎨
+
+Anda sekarang dapat mengambil kendali penuh atas tampilan chat tanpa harus memodifikasi core library. Cukup berikan fungsi render kustom melalui `uiTemplates` di konfigurasi.
+
+### 🧩 Available Templates
+| Template Hook | Description | Parameters |
+| :--- | :--- | :--- |
+| `renderUserMessage` | HTML wrapper untuk pesan dari user. | `(text: string)` |
+| `renderAssistantContainer` | Wrapper utama bubble asisten (termasuk icon/container). | `(contentHTML: string, result: AssistantResult)` |
+| `renderResultCard` | Tampilan kartu produk/hasil pencarian. | `(item: AssistantDataItem, index: number, isPrimary: boolean)` |
+| `renderComparison` | Tampilan tabel/hasil perbandingan produk. | `(comparison: ComparisonResult)` |
+
+### 🛠️ Example Implementation
+Anda bisa memisahkan logic UI ke file tersendiri (misal: `ui-templates.js`):
+
+```javascript
+const myTemplates = {
+    renderUserMessage: (text) => `
+        <div class="my-custom-user-bubble">
+            <p>${text}</p>
+        </div>`,
+    
+    renderResultCard: (item, idx, isPrimary) => `
+        <div class="result-card ${isPrimary ? 'featured' : ''}">
+            <img src="${item.image_url}" />
+            <h4>${item.title}</h4>
+            <button onclick="window.location.href='${item.url}'">View</button>
+        </div>`
+};
+
+// Inisialisasi dengan templates
+const config = {
+    // ... config lainnya
+    uiTemplates: myTemplates
+};
+```
+
+> [!TIP]
+> **Pro Tip**: Gunakan framework CSS seperti **Tailwind CSS** atau **Bootstrap** di dalam string HTML template Anda untuk styling yang sangat cepat dan responsif.
+
+---
+
+## 7. Session Persistence
 The library automatically saves chat history to `localStorage` under the key `assistant_chat_history`. It will automatically re-render the history upon initialization.
 
 To clear history programmatically:

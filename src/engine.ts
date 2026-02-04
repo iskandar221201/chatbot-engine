@@ -16,6 +16,7 @@ import {
     DEFAULT_FEATURE_PATTERNS,
     DEFAULT_SCHEMA
 } from "./defaults";
+import { formatCurrency } from "./utils";
 
 export class AssistantEngine {
     private searchData: AssistantDataItem[];
@@ -316,8 +317,9 @@ export class AssistantEngine {
                 if (harga) {
                     answer = templates.price!
                         .replace('{title}', topItem.title)
-                        .replace('{currency}', currency)
-                        .replace('{price}', harga.toLocaleString(locale));
+                        .replace('{currency}', '') // Remove this as formatCurrency already includes it
+                        .replace('{price}', formatCurrency(harga, currency, locale))
+                        .replace('  ', ' '); // Clean up double space if any
                 }
             } else if (intent === 'sales_fitur' || processed.tokens.includes('fitur') || processed.tokens.includes('fasilitas') || processed.tokens.includes('keunggulan')) {
                 const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
@@ -352,30 +354,21 @@ export class AssistantEngine {
     }
 
     private calculateDiceCoefficient(s1: string, s2: string): number {
-        const getBigrams = (str: string) => {
-            const bigrams = new Set<string>();
-            for (let i = 0; i < str.length - 1; i++) {
-                bigrams.add(str.substring(i, i + 2));
-            }
+        if (!s1 || !s2) return 0;
+        const getBigrams = (s: string) => {
+            const bigrams = new Set();
+            for (let i = 0; i < s.length - 1; i++) bigrams.add(s.substring(i, i + 2));
             return bigrams;
         };
-
-        if (s1 === s2) return 1;
-        if (s1.length < 2 || s2.length < 2) return 0;
-
-        const bigrams1 = getBigrams(s1);
-        const bigrams2 = getBigrams(s2);
-
-        let intersection = 0;
-        for (const bigram of bigrams1) {
-            if (bigrams2.has(bigram)) intersection++;
-        }
-
-        return (2 * intersection) / (bigrams1.size + bigrams2.size);
+        const b1 = getBigrams(s1);
+        const b2 = getBigrams(s2);
+        let intersect = 0;
+        b1.forEach(b => { if (b2.has(b)) intersect++; });
+        return (2 * intersect) / (b1.size + b2.size);
     }
 
     private stemIndonesian(word: string): string {
-        return this.stemmer.stem(word.toLowerCase());
+        return this.stemmer.stem(word);
     }
 
     private calculateScore(item: AssistantDataItem, processed: any, fuseScore: number): number {
@@ -437,33 +430,34 @@ export class AssistantEngine {
     }
 
     private detectIntent(processed: any): string {
-        const triggers = { ...DEFAULT_SALES_TRIGGERS, ...(this.config.salesTriggers || {}) };
-
-        // Stem tokens for intent matching as well
+        // Stem tokens for intent matching
         const stemmedTokens = processed.tokens.map((t: string) => this.stemIndonesian(t));
 
-        for (const [intent, tokens] of Object.entries(triggers)) {
-            if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `sales_${intent}`;
-        }
-
-        const chatTriggers = { ...DEFAULT_CHAT_TRIGGERS, ...(this.config.conversationTriggers || {}) };
-
-        for (const [intent, tokens] of Object.entries(chatTriggers)) {
-            if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `chat_${intent}`;
-        }
-
+        // 1. Contact Triggers (High Priority)
         const contactTriggers = [...DEFAULT_CONTACT_TRIGGERS, ...(this.config.contactTriggers || [])];
         if (contactTriggers.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) {
             return 'chat_contact';
         }
 
-        if (!this.config.intentRules) return 'fuzzy';
+        // 2. Custom Intent Rules
+        if (this.config.intentRules) {
+            for (const rule of this.config.intentRules) {
+                const entityMatch = !rule.conditions.entities || rule.conditions.entities.some(e => processed.entities[e]);
+                const tokenMatch = !rule.conditions.tokens || rule.conditions.tokens.some(t => processed.tokens.includes(t) || stemmedTokens.includes(t));
+                if (entityMatch && tokenMatch) return rule.intent;
+            }
+        }
 
-        for (const rule of this.config.intentRules) {
-            const entityMatch = !rule.conditions.entities || rule.conditions.entities.some(e => processed.entities[e]);
-            const tokenMatch = !rule.conditions.tokens || rule.conditions.tokens.some(t => processed.tokens.includes(t) || stemmedTokens.includes(t));
+        // 3. Basic Chat Triggers (Greetings, Thanks)
+        const chatTriggers = { ...DEFAULT_CHAT_TRIGGERS, ...(this.config.conversationTriggers || {}) };
+        for (const [intent, tokens] of Object.entries(chatTriggers)) {
+            if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `chat_${intent}`;
+        }
 
-            if (entityMatch && tokenMatch) return rule.intent;
+        // 4. Sales Triggers (Product intents)
+        const triggers = { ...DEFAULT_SALES_TRIGGERS, ...(this.config.salesTriggers || {}) };
+        for (const [intent, tokens] of Object.entries(triggers)) {
+            if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `sales_${intent}`;
         }
 
         return 'fuzzy';
@@ -495,97 +489,81 @@ export class AssistantEngine {
         // 1. Direct match
         if (triggers.some(t => queryLower.includes(t))) return true;
 
-        // 2. Fuzzy match for triggers (handle "paleng" vs "paling", "rekomen" vs "rekomended")
+        // 2. Fuzzy match for triggers
         const words = queryLower.split(/\s+/);
         for (const word of words) {
-            for (const trigger of triggers) {
-                // Skip short triggers for fuzzy match to avoid false positives
-                if (trigger.length < 4) continue;
-
-                // Simple levenshtein-like check or substring check
-                if (this.calculateDiceCoefficient(word, trigger) > 0.7) {
-                    return true;
-                }
-            }
+            if (triggers.some(t => this.calculateDiceCoefficient(word, t) > 0.7)) return true;
         }
 
         return false;
     }
 
     /**
-     * Extract attributes from description text
+     * Extract attributes from a product's description or extra data
      */
     private extractAttributes(item: AssistantDataItem): Record<string, string | number | boolean> {
         const attributes: Record<string, string | number | boolean> = {};
-        const description = (item.description || '').toLowerCase();
-        const title = (item.title || '').toLowerCase();
-        const fullText = `${title} ${description}`;
+        const extractors = { ...DEFAULT_ATTRIBUTE_EXTRACTORS, ...(this.config.attributeExtractors || {}) };
 
-        // Merge with custom extractors from config
-        const extractors = { ...DEFAULT_ATTRIBUTE_EXTRACTORS };
-        if (this.config.attributeExtractors) {
-            for (const [key, pattern] of Object.entries(this.config.attributeExtractors)) {
-                extractors[key] = typeof pattern === 'string' ? new RegExp(pattern, 'i') : pattern;
-            }
-        }
-
-        // Extract attributes using patterns
-        for (const [attrName, pattern] of Object.entries(extractors)) {
-            const match = fullText.match(pattern);
+        // 1. Extract from description using regex
+        for (const [attr, pattern] of Object.entries(extractors)) {
+            const regex = typeof pattern === 'string' ? new RegExp(pattern, 'i') : pattern;
+            const match = item.description.match(regex);
             if (match && match[1]) {
-                attributes[attrName] = match[1].trim();
+                attributes[attr] = match[1].trim();
             }
         }
 
+        // 2. Include numeric fields from schema
         const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
-
-        // Add existing structured data
         if (item.price_numeric) attributes[schema.PRICE] = item.price_numeric;
         if (item.sale_price) attributes[schema.PRICE_PROMO] = item.sale_price;
         if (item.badge_text) attributes[schema.BADGE] = item.badge_text;
-        if (item.is_recommended) attributes[schema.RECOMMENDED] = true;
+        if (item.is_recommended) attributes[schema.RECOMMENDED] = item.is_recommended;
 
-        // Extract features from description (bullet points or comma-separated)
-        let patterns = this.config.featurePatterns || DEFAULT_FEATURE_PATTERNS;
-        const featurePatterns = patterns.map((p: RegExp | string) => typeof p === 'string' ? new RegExp(p, 'gi') : p);
-
+        // 3. Features extraction
+        const featurePatterns = this.config.featurePatterns || DEFAULT_FEATURE_PATTERNS;
         const features: string[] = [];
         for (const pattern of featurePatterns) {
+            const regex = typeof pattern === 'string' ? new RegExp(pattern, 'gi') : pattern;
             let match;
-            while ((match = pattern.exec(fullText)) !== null) {
-                const feature = match[1]?.trim();
-                if (feature && feature.length > 3 && feature.length < 100) {
-                    features.push(feature);
-                }
+            while ((match = regex.exec(item.description)) !== null) {
+                if (match[1]) features.push(match[1].trim());
             }
         }
+
         if (features.length > 0) {
-            attributes[schema.FEATURES] = features.slice(0, 5).join('; ');
+            attributes[schema.FEATURES] = features.join(', ');
+        }
+
+        // 4. Custom data passthrough (if not already extracted)
+        for (const [key, value] of Object.entries(item)) {
+            if (!['title', 'description', 'answer', 'url', 'category', 'keywords', 'price_numeric', 'sale_price', 'badge_text', 'cta_label', 'cta_url', 'image_url', 'is_recommended'].includes(key)) {
+                attributes[key] = value;
+            }
         }
 
         return attributes;
     }
 
     /**
-     * Calculate comparison score for an item
+     * Calculate a comparison suitability score
      */
-    private calculateComparisonScore(item: AssistantDataItem, attributes: Record<string, string | number | boolean>): number {
+    private calculateComparisonScore(item: AssistantDataItem, attributes: Record<string, any>): number {
         let score = 0;
         const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
-
-        // Price advantage (lower is better, sale price bonus)
-        if (item.sale_price && item.price_numeric) {
-            const discount = ((item.price_numeric - item.sale_price) / item.price_numeric) * 100;
-            score += Math.min(discount, 50); // Max 50 points for discount
-        }
 
         // Recommendation bonus
         if (item.is_recommended) score += 30;
 
+        // Price logic
+        if (item.sale_price && item.price_numeric && item.sale_price < item.price_numeric) {
+            score += 20; // High value on sale items
+        }
+
         // Badge bonus
         if (item.badge_text) {
             const badgeLower = item.badge_text.toLowerCase();
-            if (badgeLower.includes('best') || badgeLower.includes('terbaik')) score += 25;
             if (badgeLower.includes('popular') || badgeLower.includes('populer')) score += 20;
             if (badgeLower.includes('new') || badgeLower.includes('baru')) score += 15;
             if (badgeLower.includes('sale') || badgeLower.includes('promo')) score += 15;
@@ -639,72 +617,18 @@ export class AssistantEngine {
             reasons.push(labels.mostFeatures!);
         }
 
-        // Has warranty
-        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
-        if (item.attributes[schema.WARRANTY]) {
-            reasons.push(labels.warranty!.replace('{warranty}', String(item.attributes[schema.WARRANTY])));
-        }
-
-        // Is recommended
-        if (item.isRecommended) {
-            reasons.push(labels.teamRecommendation!);
-        }
-
-        return reasons.slice(0, 4);
+        return reasons;
     }
 
     /**
-     * Generate comparison table in HTML
+     * Generate Table HTML
      */
     private generateTableHtml(items: ComparisonItem[], attributeLabels: string[]): string {
-        const labels = this.getComparisonLabels();
+        const headers = items.map(i => `<th>${i.title}${i.isRecommended ? ' ✨' : ''}</th>`).join('');
+        let rows = '';
 
-        if (items.length === 0) {
-            return `<p>${labels.noProducts}</p>`;
-        }
-
-        let html = `<table class="comparison-table" style="width:100%;border-collapse:collapse;font-size:14px;">`;
-
-        // Header row
-        html += `<thead><tr style="background:#f5f5f5;">`;
-        html += `<th style="padding:12px;border:1px solid #ddd;text-align:left;">${labels.title}</th>`;
-        for (const item of items) {
-            const recommended = item.isRecommended ? ' ⭐' : '';
-            html += `<th style="padding:12px;border:1px solid #ddd;text-align:center;">${item.title}${recommended}</th>`;
-        }
-        html += `</tr></thead>`;
-
-        // Body rows
-        html += `<tbody>`;
-
-        const locale = this.config.locale || DEFAULT_UI_CONFIG.locale;
-        const currency = this.config.currencySymbol || DEFAULT_UI_CONFIG.currencySymbol;
-
-        // Price row (always show if available)
-        const hasPrice = items.some(i => i.price || i.salePrice);
-        if (hasPrice) {
-            html += `<tr>`;
-            html += `<td style="padding:10px;border:1px solid #ddd;font-weight:bold;">${labels.price}</td>`;
-            for (const item of items) {
-                let priceHtml = '-';
-                if (item.salePrice && item.price && item.salePrice < item.price) {
-                    priceHtml = `<span style="text-decoration:line-through;color:#999;">${currency} ${item.price.toLocaleString(locale)}</span><br><span style="color:#e53935;font-weight:bold;">${currency} ${item.salePrice.toLocaleString(locale)}</span>`;
-                } else if (item.price) {
-                    priceHtml = `${currency} ${item.price.toLocaleString(locale)}`;
-                } else if (item.salePrice) {
-                    priceHtml = `<span style="color:#e53935;font-weight:bold;">${currency} ${item.salePrice.toLocaleString(locale)}</span>`;
-                }
-                html += `<td style="padding:10px;border:1px solid #ddd;text-align:center;">${priceHtml}</td>`;
-            }
-            html += `</tr>`;
-        }
-
-        // Attribute rows
-        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
         for (const attr of attributeLabels) {
-            if (attr === schema.PRICE || attr === schema.PRICE_PROMO) continue; // Already handled
-            html += `<tr>`;
-            html += `<td style="padding:10px;border:1px solid #ddd;font-weight:bold;">${this.formatAttributeLabel(attr)}</td>`;
+            rows += `<tr><td><strong>${this.formatAttributeLabel(attr)}</strong></td>`;
             for (const item of items) {
                 const value = item.attributes[attr];
                 let displayValue = '-';
@@ -715,67 +639,23 @@ export class AssistantEngine {
                         displayValue = String(value);
                     }
                 }
-                html += `<td style="padding:10px;border:1px solid #ddd;text-align:center;">${displayValue}</td>`;
+                rows += `<td>${displayValue}</td>`;
             }
-            html += `</tr>`;
+            rows += '</tr>';
         }
 
-        html += `</tbody></table>`;
-        return html;
+        return `<table class="comparison-table"><thead><tr><th>Fitur</th>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
     }
 
     /**
-     * Generate comparison table in Markdown
+     * Generate Table Markdown
      */
     private generateTableMarkdown(items: ComparisonItem[], attributeLabels: string[]): string {
-        const labels = this.getComparisonLabels();
+        const headers = items.map(i => i.title + (i.isRecommended ? ' ✨' : '')).join(' | ');
+        let md = `| Fitur | ${headers} |\n`;
+        md += `| :--- | ${items.map(() => ':---').join(' | ')} |\n`;
 
-        if (items.length === 0) {
-            return labels.noProducts;
-        }
-
-        let md = '';
-
-        // Header row
-        md += `| ${labels.title} |`;
-        for (const item of items) {
-            const recommended = item.isRecommended ? ' ⭐' : '';
-            md += ` ${item.title}${recommended} |`;
-        }
-        md += '\n';
-
-        // Separator
-        md += `|---|`;
-        for (let i = 0; i < items.length; i++) {
-            md += `---|`;
-        }
-        md += '\n';
-
-        const locale = this.config.locale || DEFAULT_UI_CONFIG.locale;
-        const currency = this.config.currencySymbol || DEFAULT_UI_CONFIG.currencySymbol;
-
-        // Price row
-        const hasPrice = items.some(i => i.price || i.salePrice);
-        if (hasPrice) {
-            md += `| **${labels.price}** |`;
-            for (const item of items) {
-                if (item.salePrice && item.price && item.salePrice < item.price) {
-                    md += ` ~~${currency} ${item.price.toLocaleString(locale)}~~ **${currency} ${item.salePrice.toLocaleString(locale)}** |`;
-                } else if (item.price) {
-                    md += ` ${currency} ${item.price.toLocaleString(locale)} |`;
-                } else if (item.salePrice) {
-                    md += ` **${currency} ${item.salePrice.toLocaleString(locale)}** |`;
-                } else {
-                    md += ` - |`;
-                }
-            }
-            md += '\n';
-        }
-
-        // Attribute rows
-        const schema = { ...DEFAULT_SCHEMA, ...(this.config.schema || {}) };
         for (const attr of attributeLabels) {
-            if (attr === schema.PRICE || attr === schema.PRICE_PROMO) continue;
             md += `| **${this.formatAttributeLabel(attr)}** |`;
             for (const item of items) {
                 const value = item.attributes[attr];

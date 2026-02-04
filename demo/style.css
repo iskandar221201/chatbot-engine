@@ -158,19 +158,6 @@ body {
     z-index: 1000;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    opacity: 1;
-    transition: opacity 0.4s ease;
-}
-
-#chat-window {
-    width: 650px;
-    max-width: 100%;
-    height: 850px;
-    max-height: 92vh;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-3xl);
     display: flex;
@@ -325,22 +312,6 @@ input {
 
 .bg-white\/80 {
     background: rgba(255, 255, 255, 0.8);
-}
-
-.backdrop-blur-md {
-    backdrop-filter: blur(12px);
-}
-
-.max-w-\[85\%\] {
-    max-width: 85%;
-}
-
-.max-w-\[92\%\] {
-    max-width: 92%;
-}
-
-.text-white {
-    color: white;
 }
 
 .text-dark {

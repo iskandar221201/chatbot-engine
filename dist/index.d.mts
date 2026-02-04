@@ -84,6 +84,12 @@ interface AssistantConfig {
     };
     resultLimit?: number;
     subSearchJoiner?: string;
+    uiTemplates?: {
+        renderUserMessage?: (text: string) => string;
+        renderAssistantContainer?: (contentHTML: string, result: AssistantResult) => string;
+        renderResultCard?: (item: AssistantDataItem, index: number, isPrimary: boolean) => string;
+        renderComparison?: (comparison: ComparisonResult) => string;
+    };
 }
 interface IntentRule {
     intent: string;
@@ -137,11 +143,11 @@ declare class AssistantEngine {
      */
     isComparisonQuery(query: string): boolean;
     /**
-     * Extract attributes from description text
+     * Extract attributes from a product's description or extra data
      */
     private extractAttributes;
     /**
-     * Calculate comparison score for an item
+     * Calculate a comparison suitability score
      */
     private calculateComparisonScore;
     /**
@@ -149,11 +155,11 @@ declare class AssistantEngine {
      */
     private generateReasons;
     /**
-     * Generate comparison table in HTML
+     * Generate Table HTML
      */
     private generateTableHtml;
     /**
-     * Generate comparison table in Markdown
+     * Generate Table Markdown
      */
     private generateTableMarkdown;
     /**
@@ -192,6 +198,7 @@ declare class AssistantController {
     private addAssistantMessage;
     private generateResponseHTML;
     private formatText;
+    private formatCurrency;
     private saveHistory;
     private loadHistory;
 }

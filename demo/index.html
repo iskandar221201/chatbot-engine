@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .hero {
             background-image: url('hero-bg.png');
@@ -104,6 +105,8 @@
     <script src="../dist/index.global.js"></script>
     <!-- Load Configuration -->
     <script src="assistant-config.js"></script>
+    <!-- Load UI Templates (Separated from config) -->
+    <script src="ui-templates.js"></script>
 
     <!-- Load Data -->
     <script src="sample-data.js"></script>
@@ -129,6 +132,11 @@
                 // Load data from global variable (loaded via sample-data.js)
                 const products = window.SAMPLE_PRODUCTS || [];
                 const config = window.ASSISTANT_CONFIG || {};
+
+                // Merge UI Templates into config
+                if (window.ASSISTANT_TEMPLATES) {
+                    config.uiTemplates = window.ASSISTANT_TEMPLATES;
+                }
 
                 if (products.length === 0) {
                     console.warn("No products found in sample-data.js");

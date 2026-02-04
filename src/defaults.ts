@@ -42,21 +42,21 @@ export const DEFAULT_CHAT_TRIGGERS: Record<string, string[]> = {
     'thanks': ['terima kasih', 'thanks', 'tq', 'syukron', 'makasih', 'oke', 'sip', 'mantap']
 };
 
-export const DEFAULT_CONTACT_TRIGGERS: string[] = ['kontak', 'contact', 'whatsapp', 'wa', 'email', 'telepon', 'phone', 'call', 'hubungi'];
+export const DEFAULT_CONTACT_TRIGGERS: string[] = ['kontak', 'contact', 'whatsapp', 'wa', 'email', 'telepon', 'phone', 'call', 'hubungi', 'tanya admin', 'chat admin', 'nanya'];
 
 export const DEFAULT_COMPARISON_LABELS = {
-    title: 'Product',
-    price: 'Price',
-    recommendation: 'Recommendation',
-    bestChoice: 'Best Choice',
-    reasons: 'Reasons',
-    noProducts: 'No products found to compare.',
+    title: 'Produk',
+    price: 'Harga',
+    recommendation: 'Pilihan Terbaik',
+    bestChoice: 'Rekomendasi Utama',
+    reasons: 'Mengapa ini cocok untuk Anda?',
+    noProducts: 'Maaf, saya tidak menemukan produk yang pas untuk dibandingkan.',
     vsLabel: 'vs',
-    discount: 'Diskon {discount}% dari harga normal',
-    cheapest: 'Harga paling terjangkau',
-    mostFeatures: 'Fitur paling lengkap',
-    warranty: 'Garansi: {warranty}',
-    teamRecommendation: 'Direkomendasikan oleh tim kami'
+    discount: 'Hemat {discount}% dari harga normal!',
+    cheapest: 'Paling ekonomis di kelasnya',
+    mostFeatures: 'Fitur paling lengkap & canggih',
+    warranty: 'Jaminan Garansi: {warranty}',
+    teamRecommendation: 'Sangat direkomendasikan oleh tim kami'
 };
 
 export const DEFAULT_ATTRIBUTE_EXTRACTORS: Record<string, RegExp> = {
@@ -88,8 +88,8 @@ export const DEFAULT_LABEL_MAP: Record<string, string> = {
     'material': 'Material',
     'warna': 'Warna',
     'ukuran': 'Ukuran',
-    'fitur': 'Fitur',
-    'badge': 'Badge',
+    'fitur': 'Fitur Utama',
+    'badge': 'Status',
     'direkomendasikan': 'Rekomendasi'
 };
 
@@ -97,16 +97,16 @@ export const DEFAULT_UI_CONFIG = {
     locale: 'id-ID',
     currencySymbol: 'Rp',
     answerTemplates: {
-        price: 'Harga {title} adalah {currency} {price}',
-        features: 'Fitur {title} meliputi: {features}',
-        noResults: 'Maaf, saya tidak menemukan informasi tersebut.'
+        price: 'Tentu! Harga {title} saat ini adalah {currency} {price}. Menarik banget kan?',
+        features: 'Ini dia beberapa keunggulan dari {title}: {features}. Gimana, sesuai kebutuhan Anda?',
+        noResults: 'Aduh, maaf banget ya, saya belum nemu info soal itu. Mungkin bisa coba tanya yang lain?'
     },
     resultLimit: 5,
-    subSearchJoiner: '. ',
+    subSearchJoiner: '. Dan juga, ',
     fallbackResponses: {
-        'chat_greeting': 'Halo! Ada yang bisa saya bantu hari ini? Anda bisa tanya tentang produk, harga, atau promo kami.',
-        'chat_thanks': 'Sama-sama! Senang bisa membantu. Ada lagi yang ingin ditanyakan?',
-        'chat_contact': 'Anda bisa menghubungi kami melalui WhatsApp atau Email. Ingin saya hubungkan sekarang?'
+        'chat_greeting': 'Halo! Senang sekali Anda mampir. Ada yang bisa saya bantu cari hari ini? Tanya soal paket atau promo juga boleh lho!',
+        'chat_thanks': 'Sama-sama! Senang banget bisa bantu. Kalau ada yang bingung lagi, tanya aja ya!',
+        'chat_contact': 'Tentu! Anda bisa langsung ngobrol sama tim admin kami lewat WhatsApp. Mau saya sambungkan sekarang?'
     }
 };
 
