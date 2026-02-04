@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistant-in-a-Box | Premium Sales Chatbot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .hero {
+            background-image: url('C:/Users/USER/.gemini/antigravity/brain/59e49579-8954-4c03-8249-22300a242ea8/hero_background_1770187897097.png');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body>
+
+    <section class="hero">
+        <h1>Sales-Driven AI Assistant</h1>
+        <p>Transform your static landing page into a proactive sales machine with <b>Assistant-in-a-Box</b>. The first chatbot engine that prioritizes your business goals.</p>
+        <a href="#" class="btn-primary" onclick="app.openAssistant(); return false;">Try Interactive Demo</a>
+    </section>
+
+    <!-- Assistant UI (Standard Example) -->
+    <div id="search-overlay" class="hidden opacity-0">
+        <div id="chat-window">
+            <div class="chat-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                    <span class="font-bold">Sales Assistant</span>
+                </div>
+                <button id="close-search" style="background: none; border: none; color: white; cursor: pointer;">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2"></path></svg>
+                </button>
+            </div>
+
+            <div id="chat-container">
+                <div id="messages-list" class="space-y-4">
+                    <!-- Dynamic Messages -->
+                </div>
+                <!-- Typing Indicator -->
+                <div id="typing-indicator" class="hidden opacity-0 p-4 bg-gray-50 rounded-2xl w-max italic text-xs text-gray-400">Assistant sedang mengetik...</div>
+            </div>
+
+            <div class="chat-footer">
+                <div class="input-wrapper">
+                    <input type="text" id="search-input" placeholder="Tanya tentang promo atau produk kami...">
+                    <button id="send-btn">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Production Bundle (IIFE) -->
+    <script src="./dist/index.global.js"></script>
+    <script>
+        // Sample Data
+        const products = [
+            { 
+                title: "Paket Umroh Eksklusif 2026", 
+                category: "Layanan", 
+                price_numeric: 35000000, 
+                sale_price: 32000000, 
+                badge_text: "Terlaris",
+                description: "Paket bintang 5 dengan hotel di pelataran Masjidil Haram.",
+                answer: "Kami punya Paket Eksklusif seharga Rp 32Jt (Promo!) yang sangat nyaman.",
+                is_recommended: true,
+                url: "#"
+            },
+            { 
+                title: "Paket Wisata Turki 10 Hari", 
+                category: "Wisata", 
+                price_numeric: 18000000, 
+                description: "Jelajahi keindahan Cappadocia dan Istanbul.",
+                url: "#"
+            }
+        ];
+
+        // AI Config
+        const config = {
+            whatsappNumber: '6281234567890',
+            salesTriggers: {
+                'beli': ['order', 'daftar', 'mau']
+            }
+        };
+
+        // Selectors mapping
+        const selectors = {
+            overlayId: "search-overlay",
+            inputId: "search-input",
+            sendBtnId: "send-btn",
+            closeBtnId: "close-search",
+            chatContainerId: "chat-container",
+            messagesListId: "messages-list",
+            typingIndicatorId: "typing-indicator"
+        };
+
+        // Initialize from Global Bundle
+        const app = new Assistant.AssistantController(products, undefined, selectors, config);
+    </script>
+</body>
+</html>

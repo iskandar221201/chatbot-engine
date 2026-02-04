@@ -1,23 +1,33 @@
 {
-    "name": "ai-search-core",
-    "version": "1.0.0",
-    "description": "A generic, context-aware AI search engine library for any domain.",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "name": "assistant-in-a-box",
+    "version": "1.1.0",
+    "description": "A sales-driven, context-aware chatbot engine for landing pages.",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist",
+        "README.md",
+        "DOCUMENTATION.md"
+    ],
     "scripts": {
-        "build": "tsc && if not exist dist\\lib mkdir dist\\lib && copy src\\lib\\* dist\\lib\\",
+        "build": "tsup index.ts --format cjs,esm,iife --dts --clean --minify --global-name Assistant",
+        "dev": "tsup index.ts --format cjs,esm --watch --dts",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [
+        "chatbot",
+        "sales",
         "search",
         "ai",
-        "context",
-        "fuzzy"
+        "context-aware",
+        "conversion",
+        "landing-page"
     ],
     "author": "X.ASKA",
     "license": "MIT",
-    "dependencies": {},
     "devDependencies": {
+        "tsup": "^8.5.1",
         "typescript": "^5.0.0"
     }
 }
