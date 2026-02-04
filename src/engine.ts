@@ -33,8 +33,12 @@ export class AssistantEngine {
     private stemmer: Stemmer;
     private tokenizer: Tokenizer;
 
-    constructor(searchData: AssistantDataItem[], FuseClass: any = Fuse, config: AssistantConfig = {}) {
-        this.searchData = searchData;
+    constructor(
+        searchData: AssistantDataItem[],
+        FuseClass: any = Fuse,
+        config: AssistantConfig = {}
+    ) {
+        this.searchData = searchData || [];
         this.Fuse = FuseClass;
         this.config = {
             phoneticMap: {},
@@ -57,6 +61,14 @@ export class AssistantEngine {
         this.initFuse();
     }
 
+    /**
+     * Add new data entries to the engine dynamically
+     */
+    public addData(data: AssistantDataItem[]) {
+        this.searchData = [...this.searchData, ...data];
+        this.initFuse();
+    }
+
     private initFuse() {
         if (this.Fuse) {
             this.fuse = new this.Fuse(this.searchData, {
@@ -64,6 +76,7 @@ export class AssistantEngine {
                     { name: "title", weight: 0.8 },
                     { name: "keywords", weight: 0.5 },
                     { name: "description", weight: 0.2 },
+                    { name: "content", weight: 0.1 },
                 ],
                 threshold: 0.45,
                 includeScore: true,
@@ -344,6 +357,14 @@ export class AssistantEngine {
             }
         }
 
+        // F. Crawl Mode Snippet Extraction (If no answer found but content exists)
+        if ((!answer || answer === templates.noResults) && topMatches.length > 0 && topMatches[0].content) {
+            const snippet = this.extractSnippet(topMatches[0].content, processed.tokens);
+            if (snippet) {
+                answer = snippet;
+            }
+        }
+
         return {
             results: topMatches,
             intent: intent,
@@ -376,7 +397,10 @@ export class AssistantEngine {
         const titleLower = item.title.toLowerCase();
         const descriptionLower = item.description.toLowerCase();
         const keywordsLower = (item.keywords || []).map(k => k.toLowerCase());
-        const fullContent = (titleLower + ' ' + keywordsLower.join(' ') + ' ' + descriptionLower);
+        const contentLower = (item.content || '').toLowerCase();
+
+        // Include full content in the search scope
+        const fullContent = (titleLower + ' ' + keywordsLower.join(' ') + ' ' + descriptionLower + ' ' + contentLower);
 
         // A. Token Matching & N-Gram overlap (Dice)
         processed.tokens.forEach((token: string, i: number) => {
@@ -393,9 +417,9 @@ export class AssistantEngine {
 
         // B. Exact hits on title/category (Higher Weight)
         processed.tokens.forEach((token: string) => {
-            if (titleLower.includes(token)) score += 20;
+            if (titleLower.includes(token)) score += 25;
             if (item.category.toLowerCase().includes(token)) score += 25;
-            if (keywordsLower.includes(token)) score += 15;
+            if (keywordsLower.includes(token)) score += 20;
         });
 
         // C. Phrase overlap (Dice Coefficient for full query vs title)
@@ -405,7 +429,13 @@ export class AssistantEngine {
         // D. Context & Business Logic
         if (this.history.lastCategory === item.category) score += 10;
         if (this.history.lastItemId === item.title) score += 20; // Stronger boost for same item
-        if (item.is_recommended) score += 25;
+
+        if (item.is_recommended) {
+            score += 30;
+            // Extra super-boost for crawler results that are recommended (set in controller.ts)
+            const crawlerCat = this.config.crawlerCategory || 'Page';
+            if (item.category === crawlerCat) score += 50;
+        }
 
         // E. Punctuation Intelligence Boost
         if (processed.signals?.isQuestion) {
@@ -461,6 +491,52 @@ export class AssistantEngine {
         }
 
         return 'fuzzy';
+    }
+
+    private extractSnippet(content: string, queryTokens: string[]): string {
+        if (!content || !queryTokens || queryTokens.length === 0) return "";
+
+        // Standardize content - remove excessive whitespace
+        const cleanContent = content.replace(/\s+/g, ' ').trim();
+
+        // Split into sentences (simple rule: . ? or ! followed by space)
+        const sentences = cleanContent.split(/(?<=[.!?])\s+/);
+
+        let bestSentence = "";
+        let maxOverlap = 0;
+
+        for (const sentence of sentences) {
+            const lowerSentence = sentence.toLowerCase();
+            let overlap = 0;
+
+            queryTokens.forEach(token => {
+                if (lowerSentence.includes(token.toLowerCase())) {
+                    overlap++;
+                }
+            });
+
+            if (overlap > maxOverlap) {
+                maxOverlap = overlap;
+                bestSentence = sentence;
+            }
+        }
+
+        // If high enough overlap, return sentence. Otherwise returns first paragraph or first 150 chars.
+        if (maxOverlap > 0) {
+            // Find the index of the best sentence to get context if it's too short
+            const index = sentences.indexOf(bestSentence);
+            let result = bestSentence;
+
+            // Add one sentence before and after for context if the best sentence is short (< 40 chars)
+            if (result.length < 40) {
+                if (index > 0) result = sentences[index - 1] + " " + result;
+                if (index < sentences.length - 1) result = result + " " + sentences[index + 1];
+            }
+
+            return result.trim();
+        }
+
+        return cleanContent.substring(0, 200).trim() + "...";
     }
 
     // ===== PRODUCT COMPARISON SYSTEM =====

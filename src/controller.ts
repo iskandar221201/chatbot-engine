@@ -1,5 +1,6 @@
 import type { AssistantDataItem, AssistantResult, AssistantConfig, UISelectors } from "./types";
 import { AssistantEngine } from "./engine";
+import { SiteCrawler } from "./crawler";
 import { formatCurrency } from "./utils";
 
 export class AssistantController {
@@ -24,6 +25,42 @@ export class AssistantController {
         this.initElements();
         this.initEventListeners();
         this.loadHistory();
+
+        this.initCrawler();
+    }
+
+    private async initCrawler() {
+        if (this.config.autoCrawl !== false && typeof window !== 'undefined') {
+            const crawler = new SiteCrawler(window.location.origin, {
+                maxDepth: this.config.crawlMaxDepth,
+                maxPages: this.config.crawlMaxPages,
+                ignorePatterns: this.config.crawlIgnorePatterns,
+                autoCrawl: this.config.autoCrawl,
+                category: this.config.crawlerCategory || 'Page'
+            });
+
+            // 1. Immediate Indexing: Index the current page first!
+            try {
+                const currentPageData = crawler.processDocument(document, window.location.href, this.config.crawlerCategory || 'Page');
+                // Boost: Add Manual Keywords & Priority from config
+                const extraKeywords = this.config.crawlerKeywords || [];
+                currentPageData.keywords = [...(currentPageData.keywords || []), ...extraKeywords];
+                currentPageData.is_recommended = true; // Give it a score boost
+
+                this.engine.addData([currentPageData]);
+                console.log("Assistant: Immediate indexing complete", currentPageData);
+            } catch (e) {
+                console.warn("Assistant: Immediate indexing failed", e);
+            }
+
+            // 2. Start deep crawling in background
+            crawler.crawlAll().then(pages => {
+                if (pages.length > 0) {
+                    this.engine.addData(pages);
+                    console.log(`Assistant: Background Crawl Complete. Crawled ${pages.length} pages. Data:`, pages);
+                }
+            });
+        }
     }
 
     private initElements() {

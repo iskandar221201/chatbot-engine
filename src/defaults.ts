@@ -16,7 +16,10 @@ export const DEFAULT_STOP_WORDS: string[] = [
     'dan', 'atau', 'tapi', 'namun', 'dengan', 'untuk', 'dari', 'yang', 'itu', 'ini',
     'ke', 'di', 'ada', 'adalah', 'bagi', 'pada', 'saya', 'anda', 'kamu', 'kami',
     'kita', 'mereka', 'sebuah', 'sudah', 'telah', 'akan', 'ingin', 'mau', 'bisa',
-    'dapat', 'boleh', 'harus', 'perlu', 'juga', 'saja', 'pun', 'lah', 'kah', 'nya'
+    'dapat', 'boleh', 'harus', 'perlu', 'juga', 'saja', 'pun', 'lah', 'kah', 'nya',
+    'apa', 'apaan', 'bagaimana', 'gimana', 'siapa', 'kapan', 'dimana', 'kenapa', 'mengapa',
+    'berapa', 'mana', 'setiap', 'sangat', 'sekali', 'tentang', 'yakni', 'yaitu',
+    'kok', 'deh', 'dong', 'sih', 'tah', 'punya', 'oleh', 'olehnya'
 ];
 
 export const DEFAULT_SEMANTIC_MAP: Record<string, string[]> = {
@@ -107,7 +110,8 @@ export const DEFAULT_UI_CONFIG = {
         'chat_greeting': 'Halo! Senang sekali Anda mampir. Ada yang bisa saya bantu cari hari ini? Tanya soal paket atau promo juga boleh lho!',
         'chat_thanks': 'Sama-sama! Senang banget bisa bantu. Kalau ada yang bingung lagi, tanya aja ya!',
         'chat_contact': 'Tentu! Anda bisa langsung ngobrol sama tim admin kami lewat WhatsApp. Mau saya sambungkan sekarang?'
-    }
+    },
+    crawlerCategory: 'Page'
 };
 
 export const DEFAULT_CONJUNCTIONS = /\s+(?:trus|lalu|kemudian|dan|and|then)\s+|[?!;]|,/gi;
