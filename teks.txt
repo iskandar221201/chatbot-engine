@@ -1,0 +1,13 @@
+graph LR
+    Input --> SecurityPipe
+    SecurityPipe --> ContextPipe
+    ContextPipe --> SearchEngine
+    SearchEngine --> PsychologyPipe
+    PsychologyPipe --> AnswerComposer
+    AnswerComposer --> FinalOutputgraph LR
+    Input --> SecurityPipe
+    SecurityPipe --> ContextPipe
+    ContextPipe --> SearchEngine
+    SearchEngine --> PsychologyPipe
+    PsychologyPipe --> AnswerComposer
+    AnswerComposer --> FinalOutput

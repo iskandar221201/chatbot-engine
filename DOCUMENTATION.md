@@ -12,7 +12,7 @@ The library is a modular enterprise framework:
 - **Engine Layer (`src/engine.ts`)**: Fuzzy logic, NLP scoring, and intent detection.
 - **Sales Intelligence (`src/lib/lead-scoring.ts`, `src/lib/sales-psychology.ts`)**: Modules for scoring and psychology.
 - **Enterprise Layer (`src/lib/analytics.ts`, `src/lib/sentiment.ts`)**: Telemetry, emotion detection, and logic.
-- **Security (`src/lib/security-guard.ts`)**: Input protection and sanitization, integrated directly into search pipeline.
+- **Sub-Engines (`src/lib/...`)**: Modular units for specific logic (ContextEngine, IntentOrchestrator, ResponseEngine, PreprocessingEngine, ScoringEngine, QueryOrchestrator, SecurityGuard).
 - **Core Libs (`src/lib/middleware.ts`, `src/lib/logger.ts`)**: Extensibility and observability.
 
 ---
@@ -197,22 +197,22 @@ const engine = new AssistantEngine(data, undefined, {
 > Jika sentimen terdeteksi **negative**, engine akan otomatis menyisipkan *Objection Prefix* simpatik sebelum memberikan jawaban untuk meredam kekhawatiran pelanggan.
 
 
-### H. NLP Classifier Config 🧠
-Latih chatbot dengan data kalimat khusus bisnis Anda.
+### H. Intent Orchestration (IntentOrchestrator) 🧠
+Semua deteksi intent dikelola oleh `IntentOrchestrator` yang menggabungkan AI (NLP Classifier) dengan Rule-based triggers secara hierarkis.
 
 ```typescript
-import { NLPClassifier } from 'assistant-in-a-box';
+import { IntentOrchestrator } from 'assistant-in-a-box';
 
-const nlp = new NLPClassifier({
-    useClassifier: true,
-    trainingData: {
-        'sales.price': ['cek harga', 'berapaan', 'price'],
-        'support.refund': ['minta refund', 'balikin duit', 'retur']
-    }
+const orchestrator = new IntentOrchestrator({
+    threshold: 0.8, // Strictness AI
+    salesTriggers: { 'custom': ['pesan khusus'] }
 });
+
+// Digunakan secara internal oleh Engine, namun bisa diakses:
+const intent = engine.intentOrchestrator.detect(query, tokens, stemmedTokens);
 ```
 
-### H. Hybrid AI (LLM) Config 🤖
+### I. Hybrid AI (LLM) Config 🤖
 Hubungkan dengan OpenAI atau model lain (compatible endpoint).
 
 ```typescript
@@ -226,32 +226,29 @@ const ai = new HybridAI({
 });
 ```
 
-### I. Smart Reference Resolution (Anaphora) 🧠
-Engine dapat memahami pertanyaan lanjutan tanpa menyebutkan subjeknya lagi (misal: "harganya berapa?").
+### I. Smart Reference Resolution (ContextEngine) 🧠
+Engine menggunakan `ContextEngine` sub-engine untuk memahami pertanyaan lanjutan tanpa menyebutkan subjeknya lagi (misal: "harganya berapa?").
 
 ```typescript
-const engine = new AssistantEngine(data, undefined, {
+// Akses langsung ke sub-engine
+const engine = new AssistantEngine(data);
+const currentState = engine.context.getState(); 
+
+// Konfigurasi via Engine
+const engineWithRef = new AssistantEngine(data, undefined, {
     // Kata kunci yang memicu resolusi subjek dari history
     referenceTriggers: ['berapa', 'harganya', 'stok', 'fitur', 'warna']
 });
 ```
+> [!TIP]
+> **Entity Locking**: Jika engine menemukan hasil dengan kepercayaan tinggi (>80%), sub-engine akan "mengunci" subjek tersebut untuk referensi percakapan berikutnya sampai user mengganti topik secara eksplisit.
 
-### J. Proactive Sales Psychology 📈
-Meningkatkan konversi dengan pemicu psikologis otomatis (FOMO, Social Proof, Closing Nudges).
 
-```typescript
-const engine = new AssistantEngine(data, undefined, {
-    salesPsychology: {
-        enableFomo: true,
-        enableSocialProof: true,
-        crossSellRules: [
-            { triggerCategory: 'Laptop', suggestCategory: 'Aksesoris', messageTemplate: 'Beli ini juga kak?' }
-        ]
-    }
-});
-```
-> [!NOTE]
-> Engine akan otomatis menambahkan *Closing Questions* (pertanyaan pancingan) pada akhir jawaban jika mendeteksi intent pembelian yang kuat (misal: `sales_beli`).
+### L. Relevancy & Ranking (ScoringEngine) ⚖️
+Logika penilaian hasil pencarian (Dice Coefficient, weighting, contextual boosting) dikelola oleh `ScoringEngine`. Ini memungkinkan penggantian algoritma perankingan tanpa mengubah alur pencarian.
+
+### M. Search Orchestration (QueryOrchestrator) 🧠
+"Otak" dari pipa pencarian yang mengoordinasikan semua sub-engine (Preprocessing -> Intent -> Scoring -> Response). Ia juga menangani pemisahan *Compound Queries* dan koordinasi antara pencarian lokal/remote.
 
 
 ---

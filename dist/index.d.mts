@@ -1,32 +1,7 @@
-interface ClassificationResult {
-    intent: string;
-    confidence: number;
-    allScores: Record<string, number>;
-}
 interface NLPConfig {
     useClassifier?: boolean;
     classifierThreshold?: number;
     trainingData?: Record<string, string[]>;
-}
-declare class NLPClassifier {
-    private wordCounts;
-    private labelCounts;
-    private vocab;
-    private totalDocuments;
-    private config;
-    constructor(config?: NLPConfig);
-    private trainData;
-    /**
-     * Train the classifier with a document
-     */
-    train(text: string, label: string): void;
-    /**
-     * Classify text into an intent
-     */
-    classify(text: string): ClassificationResult;
-    private calculateLogProbability;
-    private calculateConfidence;
-    private tokenize;
 }
 
 /**
@@ -369,6 +344,195 @@ declare class MiddlewareManager {
 }
 
 /**
+ * Intent Orchestrator Sub-Engine
+ * Coordinates NLP classification, rule-based triggers, and fuzzy matching.
+ */
+
+interface IntentOrchestratorConfig {
+    nlp?: NLPConfig;
+    salesTriggers?: Record<string, string[]>;
+    conversationTriggers?: Record<string, string[]>;
+    contactTriggers?: string[];
+    threshold?: number;
+}
+declare class IntentOrchestrator {
+    private nlp;
+    private config;
+    constructor(config?: IntentOrchestratorConfig);
+    /**
+     * Detect intent from a query and its processed tokens
+     */
+    detect(query: string, tokens: string[], stemmedTokens: string[]): string;
+    /**
+     * Add training data to NLP classifier
+     */
+    train(text: string, label: string): void;
+}
+
+/**
+ * Context Engine Sub-Engine
+ * Manages conversation state, history, and anaphora resolution.
+ */
+
+interface ContextState {
+    lastCategory: string | null;
+    lastItemId: string | null;
+    detectedEntities: Set<string>;
+    interactionCount: number;
+    lockedEntityId: string | null;
+}
+declare class ContextEngine {
+    private state;
+    private referenceTriggers;
+    constructor(referenceTriggers?: string[]);
+    /**
+     * Resolve anaphora (references to previous subjects) in a query
+     */
+    resolveAnaphora(query: string): string;
+    /**
+     * Update state based on the latest result
+     */
+    update(result: AssistantResult): void;
+    /**
+     * Get the current state summary
+     */
+    getState(): Readonly<ContextState>;
+    /**
+     * Clear context
+     */
+    reset(): void;
+}
+
+/**
+ * Response Engine Sub-Engine
+ * Handles response formatting, template replacement, and adaptive tuning.
+ */
+
+interface ResponseEngineConfig {
+    answerTemplates?: AssistantConfig['answerTemplates'];
+    sentimentPrefixes?: AssistantConfig['sentimentPrefixes'];
+    fallbackIntentResponses?: AssistantConfig['fallbackIntentResponses'];
+    locale?: string;
+    currencySymbol?: string;
+    schema?: AssistantConfig['schema'];
+}
+declare class ResponseEngine {
+    private config;
+    private salesPsychology;
+    constructor(config: ResponseEngineConfig | undefined, salesPsychology: SalesPsychology);
+    /**
+     * Compose the final answer string based on the result and context
+     */
+    compose(result: AssistantResult, intent: string, isConversational: boolean, extractAttributes: (item: AssistantDataItem) => Record<string, string>): string;
+}
+
+/**
+ * Preprocessing Engine Sub-Engine
+ * Handles text normalization, phonetic correction, Indonesian linguistics, and semantic expansion.
+ */
+
+interface PreprocessingConfig {
+    phoneticMap?: Record<string, string[]>;
+    stopWords?: string[];
+    semanticMap?: Record<string, string[]>;
+    entityDefinitions?: Record<string, string[]>;
+    attributeExtractors?: Record<string, RegExp>;
+    crawlerCategory?: string;
+}
+interface ProcessedQuery {
+    tokens: string[];
+    expanded: string[];
+    entities: Record<string, boolean>;
+    signals: {
+        isQuestion: boolean;
+        isUrgent: boolean;
+    };
+}
+declare class PreprocessingEngine {
+    private stemmer;
+    private tokenizer;
+    private config;
+    constructor(config?: PreprocessingConfig);
+    /**
+     * Correct common typos using phonetic/pattern matching
+     */
+    autoCorrect(word: string): string;
+    /**
+     * Main preprocessing pipeline
+     */
+    process(query: string): ProcessedQuery;
+    /**
+     * Extract entities based on keywords
+     */
+    extractEntities(tokens: string[]): Record<string, boolean>;
+    /**
+     * Extract attributes from raw text (Description/Content)
+     */
+    extractAttributes(item: AssistantDataItem): Record<string, string>;
+    /**
+     * Direct Indonesian stemming
+     */
+    stem(word: string): string;
+}
+
+/**
+ * Scoring Engine Sub-Engine
+ * Handles ranking, relevancy calculations, and weight-based scoring.
+ */
+
+interface ScoringConfig {
+    crawlerCategory?: string;
+}
+declare class ScoringEngine {
+    private config;
+    constructor(config?: ScoringConfig);
+    /**
+     * Main scoring function for a single item
+     */
+    calculate(item: AssistantDataItem, processed: any, fuseScore: number, intent: string, contextState: any): number;
+    /**
+     * Calculate similarity between two strings using bigrams
+     */
+    calculateDiceCoefficient(s1: string, s2: string): number;
+    /**
+     * Scoring for product comparisons
+     */
+    calculateComparisonScore(item: AssistantDataItem, attributes: Record<string, string>): number;
+}
+
+/**
+ * Query Orchestrator Sub-Engine
+ * Coordinates the search pipeline: Preprocessing -> Intent -> Search -> Scoring -> Response.
+ * Handles compound queries, conjunctions, and remote/local coordination.
+ */
+
+declare class QueryOrchestrator {
+    private engines;
+    private config;
+    private searchData;
+    private fuse;
+    constructor(engines: any, searchData: AssistantDataItem[], fuse: any, config: AssistantConfig);
+    /**
+     * Main Search Entry Point
+     */
+    search(originalQuery: string): Promise<AssistantResult>;
+    /**
+     * Internal Search Coordinator
+     */
+    executeSubSearch(query: string): Promise<AssistantResult>;
+    private handleRemoteSearch;
+    searchWithComparison(query: string): Promise<AssistantResult & {
+        comparison?: ComparisonResult;
+    }>;
+    isComparisonQuery(query: string): boolean;
+    compareProducts(query: string, category?: string, maxItems?: number): Promise<ComparisonResult>;
+    private getComparisonLabels;
+    private generateReasons;
+    private generateTableMarkdown;
+    private formatAttributeLabel;
+}
+
+/**
  * Security Guard
  * Input sanitization and validation for server-side safety
  */
@@ -407,36 +571,33 @@ declare class AssistantEngine {
     private Fuse;
     private fuse;
     private config;
-    private history;
-    private stemmer;
-    private tokenizer;
     analytics: AnalyticsEngine;
     middleware: MiddlewareManager;
     salesPsychology: SalesPsychology;
     hybridAI: HybridAI;
-    nlpClassifier: NLPClassifier;
+    intentOrchestrator: IntentOrchestrator;
     sentimentAnalyzer: SentimentAnalyzer;
     securityGuard: SecurityGuard;
+    context: ContextEngine;
+    responseEngine: ResponseEngine;
+    prepro: PreprocessingEngine;
+    scoring: ScoringEngine;
+    orchestrator: QueryOrchestrator;
     constructor(searchData: AssistantDataItem[], FuseClass?: any, config?: AssistantConfig);
     addData(data: AssistantDataItem[]): void;
     private initFuse;
-    private autoCorrect;
-    private preprocess;
-    private extractEntities;
-    search(originalQuery: string): Promise<AssistantResult>;
-    private executeSubSearch;
-    private calculateDiceCoefficient;
-    private stemIndonesian;
-    private calculateScore;
-    private detectIntent;
-    private extractAttributes;
-    private calculateComparisonScore;
-    private isComparisonQuery;
-    private getComparisonLabels;
-    private generateReasons;
-    private generateTableMarkdown;
-    private formatAttributeLabel;
+    /**
+     * Primary Search API
+     */
+    search(query: string): Promise<AssistantResult>;
+    /**
+     * Comparison API
+     */
+    isComparisonQuery(query: string): boolean;
     compareProducts(query: string, category?: string, maxItems?: number): Promise<ComparisonResult>;
+    /**
+     * Hybrid Search + Comparison API
+     */
     searchWithComparison(query: string): Promise<AssistantResult & {
         comparison?: ComparisonResult;
     }>;
