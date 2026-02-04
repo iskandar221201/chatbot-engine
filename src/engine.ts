@@ -747,6 +747,11 @@ export class AssistantEngine {
             }
         }
 
+        // FALLBACK: If still no candidates, use all products for general comparison
+        if (candidates.length === 0) {
+            candidates = [...this.searchData];
+        }
+
         // Limit candidates
         candidates = candidates.slice(0, maxItems);
 

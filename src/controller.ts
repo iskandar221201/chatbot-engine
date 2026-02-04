@@ -120,7 +120,7 @@ export class AssistantController {
 
         setTimeout(async () => {
             this.hideTyping();
-            const result = await this.engine.search(query);
+            const result = await this.engine.searchWithComparison(query);
             this.addAssistantMessage(query, result);
         }, 1000);
     }
@@ -192,9 +192,38 @@ export class AssistantController {
         this.scrollToBottom();
     }
 
-    private generateResponseHTML(query: string, result: AssistantResult): string {
-        const { results, confidence, answer } = result;
+    private generateResponseHTML(query: string, result: AssistantResult & { comparison?: any }): string {
+        const { results, confidence, answer, comparison } = result;
         let html = "";
+
+        // 0. Handle Comparison Results First
+        if (comparison && comparison.items && comparison.items.length > 0) {
+            // Show recommendation
+            if (comparison.recommendation) {
+                html += `<div class="mb-4 p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-2xl border border-primary/20">
+                    <p class="text-xs uppercase tracking-wider text-primary font-bold mb-2">🏆 Rekomendasi Kami</p>
+                    <p class="text-base font-bold text-dark">${comparison.recommendation.item.title}</p>
+                    ${comparison.recommendation.reasons.length > 0 ? `
+                        <ul class="mt-2 text-xs text-gray-600 list-disc list-inside">
+                            ${comparison.recommendation.reasons.map((r: string) => `<li>${r}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                </div>`;
+            }
+
+            // Show comparison table
+            html += `<div class="overflow-x-auto mt-4">${comparison.tableHtml}</div>`;
+
+            // Add CTA buttons for each item
+            html += `<div class="flex flex-wrap gap-2 mt-4">`;
+            comparison.items.forEach((item: any, idx: number) => {
+                const isPrimary = idx === 0;
+                html += `<a href="${item.url}" class="px-4 py-2 text-xs font-bold rounded-xl transition-all ${isPrimary ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">${item.title}</a>`;
+            });
+            html += `</div>`;
+
+            return html;
+        }
 
         // 1. Prioritize direct conversational answer
         if (answer) {
