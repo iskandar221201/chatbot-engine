@@ -21,6 +21,12 @@ export interface AssistantResult {
     entities: Record<string, boolean>;
     confidence: number;
     answer?: string; // New: Direct response string
+    sentiment?: {
+        score: number;
+        label: 'positive' | 'negative' | 'neutral';
+        isUrgent: boolean;
+        intensity: 'low' | 'medium' | 'high';
+    };
 }
 
 // Comparison feature types
@@ -96,6 +102,12 @@ export interface AssistantConfig {
         features?: string;
         noResults?: string;
     };
+    sentimentPrefixes?: {
+        negative?: string[];
+        positive?: string[];
+    };
+    referenceTriggers?: string[];
+    security?: any;
     resultLimit?: number;
     subSearchJoiner?: string;
     // UI Templates for customization
@@ -105,6 +117,13 @@ export interface AssistantConfig {
         renderResultCard?: (item: AssistantDataItem, index: number, isPrimary: boolean) => string;
         renderComparison?: (comparison: ComparisonResult) => string;
     };
+    // Enterprise Modules
+    salesPsychology?: import('./lib/sales-psychology').SalesPsychologyConfig;
+    hybridAI?: import('./lib/llm-connector').LLMConfig;
+    analytics?: import('./lib/analytics').AnalyticsConfig;
+    salesReporter?: import('./lib/sales-reporter').SalesReportConfig;
+    sentiment?: import('./lib/sentiment').SentimentConfig;
+    nlp?: import('./lib/nlp-classifier').NLPConfig;
 }
 
 export interface IntentRule {

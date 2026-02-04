@@ -34,10 +34,14 @@ export const DEFAULT_SEMANTIC_MAP: Record<string, string[]> = {
 };
 
 export const DEFAULT_SALES_TRIGGERS: Record<string, string[]> = {
-    'beli': ['beli', 'pesan', 'ambil', 'order', 'checkout', 'booking', 'buy', 'purchase', 'get', 'mau'],
-    'harga': ['harga', 'biaya', 'price', 'budget', 'bayar', 'cicilan', 'dp', 'murah', 'cost', 'payment', 'cheap', 'tarif', 'berapa', 'nominal'],
-    'promo': ['promo', 'diskon', 'discount', 'sale', 'hemat', 'bonus', 'voucher', 'off', 'sale'],
-    'fitur': ['fitur', 'fiturnya', 'spesifikasi', 'spek', 'kelebihan', 'keunggulan', 'fasilitas', 'detail', 'benefit']
+    'beli': ['beli', 'pesan', 'ambil', 'order', 'checkout', 'booking', 'buy', 'purchase', 'get', 'mau', 'bisa dapet', 'dapetin'],
+    'harga': ['harga', 'biaya', 'price', 'budget', 'bayar', 'cicilan', 'dp', 'murah', 'cost', 'payment', 'cheap', 'tarif', 'berapa', 'nominal', 'berapaan', 'murmer', 'mahal', 'terjangkau'],
+    'promo': ['promo', 'diskon', 'discount', 'sale', 'hemat', 'bonus', 'voucher', 'off', 'potongan', 'cashback', 'gratis', 'free'],
+    'fitur': ['fitur', 'fiturnya', 'spesifikasi', 'spek', 'kelebihan', 'keunggulan', 'fasilitas', 'detail', 'benefit', 'apa saja', 'termasuk'],
+    'stok': ['stok', 'stock', 'tersedia', 'ready', 'available', 'kosong', 'habis', 'ada', 'masih ada'],
+    'lokasi': ['lokasi', 'alamat', 'outlet', 'cabang', 'toko', 'kantor', 'tempat', 'dimana', 'posisi', 'maps'],
+    'pengiriman': ['kirim', 'ongkir', 'delivery', 'pengiriman', 'estimasi', 'sampai', 'ekspedisi', 'kurir', 'jne', 'jnt', 'sicepat', 'anteraja', 'gosend', 'grab'],
+    'garansi': ['garansi', 'warranty', 'jaminan', 'klaim', 'retur', 'return', 'tukar', 'refund', 'komplain']
 };
 
 export const DEFAULT_CHAT_TRIGGERS: Record<string, string[]> = {
@@ -46,6 +50,8 @@ export const DEFAULT_CHAT_TRIGGERS: Record<string, string[]> = {
 };
 
 export const DEFAULT_CONTACT_TRIGGERS: string[] = ['kontak', 'contact', 'whatsapp', 'wa', 'email', 'telepon', 'phone', 'call', 'hubungi', 'tanya admin', 'chat admin', 'nanya'];
+
+export const DEFAULT_REFERENCE_TRIGGERS: string[] = ['harganya', 'berapa', 'fitur', 'warna', 'ukuran', 'ready', 'stok', 'fasilitas', 'promonya'];
 
 export const DEFAULT_COMPARISON_LABELS = {
     title: 'Produk',
@@ -103,6 +109,19 @@ export const DEFAULT_UI_CONFIG = {
         price: 'Tentu! Harga {title} saat ini adalah {currency} {price}. Menarik banget kan?',
         features: 'Ini dia beberapa keunggulan dari {title}: {features}. Gimana, sesuai kebutuhan Anda?',
         noResults: 'Aduh, maaf banget ya, saya belum nemu info soal itu. Mungkin bisa coba tanya yang lain?'
+    },
+    sentimentPrefixes: {
+        negative: [
+            "Mohon maaf atas ketidaknyamanannya kak.",
+            "Aduh, maaf banget ya kak.",
+            "Saya mengerti kendala Kakak.",
+            "Maaf ya kak, saya usahakan bantu."
+        ],
+        positive: [
+            "Wah, senang mendengarnya! ",
+            "Terima kasih banyak kak! ",
+            "Mantap kak! "
+        ]
     },
     resultLimit: 5,
     subSearchJoiner: '. Dan juga, ',

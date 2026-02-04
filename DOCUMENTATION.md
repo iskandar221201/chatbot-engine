@@ -1,373 +1,305 @@
 # Assistant-in-a-Box: Technical Documentation 📚
 
-This guide provides a comprehensive overview of how to configure and deploy the generic Assistant library for any landing page.
+This guide provides a comprehensive overview of the Enterprise Sales-Driven Chatbot Engine.
 
 ---
 
 ## 1. Architecture Overview
 
-The library is organized within the `src/` directory:
+The library is a modular enterprise framework:
 
-- **Type System (`src/types.ts`)**: Defines the data structures for search items, results, and configuration.
-- **Engine Layer (`src/engine.ts`)**: Handles the "intelligence" – query preprocessing, **Indonesian stemming**, phonetic auto-correct, semantic expansion, and **Dice Coefficient** scoring.
-- **Controller Layer (`src/controller.ts`)**: Manages the Chat UI, DOM events, and session persistence.
-- **Internal Libs (`src/lib/`)**: Contains bundled dependencies like `fuse.js`.
-
----
-
-## 2. Quick Start (Demo)
-
-Untuk melihat chatbot beraksi secara instan, buka folder `demo/`:
-
-1. Buka `demo/index.html` di browser Anda.
-2. Edit `demo/sample-data.js` untuk mengganti data produk.
-3. Edit `demo/assistant-config.js` untuk mengatur trigger penjualan dan NLP.
-
-> [!NOTE]
-> Demo menggunakan format `.js` bukan `.json` agar bisa dijalankan langsung dari file sistem (tanpa perlu web server) tanpa terkena blokir CORS.
+- **Type System (`src/types.ts`)**: Core data structures.
+- **Engine Layer (`src/engine.ts`)**: Fuzzy logic, NLP scoring, and intent detection.
+- **Sales Intelligence (`src/lib/lead-scoring.ts`, `src/lib/sales-psychology.ts`)**: Modules for scoring and psychology.
+- **Enterprise Layer (`src/lib/analytics.ts`, `src/lib/sentiment.ts`)**: Telemetry, emotion detection, and logic.
+- **Security (`src/lib/security-guard.ts`)**: Input protection and sanitization, integrated directly into search pipeline.
+- **Core Libs (`src/lib/middleware.ts`, `src/lib/logger.ts`)**: Extensibility and observability.
 
 ---
 
-## 3. Setting Up the Data (JSON/JS)
+## 2. Server-Side Integration (Node.js) 🆕
 
-Your `data.json` must follow the `AssistantDataItem` interface.
+Library ini sekarang **100% Server-Side Ready** (Node.js/Bun/Deno).
 
-```json
-[
-  {
-    "title": "Example Title",
-    "description": "Longer description for reference.",
-    "answer": "The specific short answer shown in the chat bubble.",
-    "url": "/link-to-page#section",
-    "category": "CategoryName",
-    "keywords": ["key1", "key2"],
-    "price_numeric": 1500000,
-    "sale_price": 1200000,
-    "badge_text": "Hot Deal",
-    "cta_label": "Beli Sekarang",
-    "cta_url": "https://wa.me/xxx",
-    "image_url": "https://...",
-    "is_recommended": true
-  }
-]
+### Konfigurasi via Environment Variables
+Buat file `.env` di root project Anda:
+
+```bash
+# Security
+AIB_SECURITY_MAX_LENGTH=1000
+AIB_SECURITY_STRICT_MODE=true
+
+# Sales Intelligence
+AIB_SALES_HOT_THRESHOLD=75
+AIB_SALES_WEIGHT_INTENT=35
+
+# Performance
+AIB_SESSION_TIMEOUT_MIN=60
 ```
 
-### 💰 Sales-Driven Mode (Core Feature)
-Chatbot ini dirancang untuk memaksimalkan konversi secara otomatis. 
-
-- **Automatic Recognition**: Mengenali maksud "beli", "harga", "promo" secara cerdas (Indonesian & English).
-- **Universal Triggers**: Bisa dikonfigurasi untuk bahasa lain (Arab, Mandarin, etc) lewat `salesTriggers`.
-- **Dynamic Badges**: Otomatis menampilkan tag **"Rekomendasi"** atau **"Hot Deal"** (dari `badge_text`).
-- **High-Conversion UI**: Menampilkan perbandingan harga (diskon) dan tombol **"Pesan Sekarang"** yang menonjol.
-- **Compound Intelligence (New)**: Mampu memproses kalimat majemuk/berantai. Jika user bertanya "harga produk A trus fiturnya apa", engine akan memilahnya menjadi dua sub-query namun tetap menjaga konteks produk A.
-
-
-#### 🛠️ Customizing Sales Triggers
-Jika landing page Anda menggunakan bahasa selain Indo/Inggris, tambahkan keyword baru:
+Load konfigurasi di aplikasi Anda:
 ```typescript
-const config = {
-    salesTriggers: {
-        'beli': ['اشتري', 'order'], // Arabic + custom
-        'harga': ['كم السعر', 'budget'],
-        'promo': ['voucher', 'kode']
+import { AssistantEngine, ConfigLoader } from 'assistant-in-a-box';
+
+const config = ConfigLoader.loadFromEnv();
+const engine = new AssistantEngine(data, Fuse, config);
+```
+
+---
+
+## 3. Sales-Driven Modules 💰
+
+Fitur utama untuk meningkatkan konversi penjualan.
+
+### A. Lead Scoring
+Menilai user berdasarkan intent (beli/tanya), urgensi (capslock/tanda seru), dan engagement.
+
+```typescript
+import { LeadScoring } from 'assistant-in-a-box';
+const scorer = new LeadScoring();
+const result = scorer.score('mau order sekarang dong, urgent!');
+
+// result.grade -> 'hot'
+// result.score -> 85
+```
+
+### B. Budget Matcher
+Otomatis mendeteksi budget user dan mencocokkan produk.
+
+```typescript
+import { BudgetMatcher } from 'assistant-in-a-box';
+const matcher = new BudgetMatcher();
+const matches = matcher.match('cari hp budget 3 jutaan', productList);
+
+// matches.suggestion -> "Ada 3 produk yang pas dengan budget 3jt..."
+```
+
+### C. Follow-Up Suggester
+Memberikan saran pertanyaan lanjutan untuk membantu closing.
+
+```typescript
+import { FollowUpSuggester } from 'assistant-in-a-box';
+const suggester = new FollowUpSuggester();
+const questions = suggester.suggest('sales_harga');
+// -> ["Apakah budget ini sudah fix?", "Mau info cicilan?"]
+```
+
+---
+
+## 4. Enterprise Features 🏢
+
+### A. Middleware Pipeline (Interceptor)
+Intercept request/response untuk custom logic (seperti Express.js).
+
+```typescript
+import { MiddlewareManager } from 'assistant-in-a-box';
+const mw = new MiddlewareManager();
+
+// Middleware: Auto-Translate Query
+mw.useRequest(async (ctx, next) => {
+    ctx.query = await translateToIndonesian(ctx.query);
+    await next();
+});
+
+// Middleware: Filter Out of Stock Results
+mw.useResponse(async (result, ctx, next) => {
+    result.results = result.results.filter(item => item.stock > 0);
+    await next();
+});
+```
+
+### B. Analytics & Telemetry
+Hook data event ke Google Analytics atau Datadog.
+
+```typescript
+import { AnalyticsEngine } from 'assistant-in-a-box';
+const analytics = new AnalyticsEngine();
+
+analytics.onEvent((event) => {
+    console.log(`[${event.type}]`, event.payload);
+    // Kirim ke external API
+});
+```
+
+### C. SecurityGuard
+Proteksi input dari serangan XSS dan SQL Injection sederhana. Engine menggunakan modul ini secara otomatis pada setiap request sebelum proses pencarian dilakukan.
+
+```typescript
+import { SecurityGuard } from 'assistant-in-a-box';
+
+// Sanitasi Input Manual
+const safeQuery = SecurityGuard.clean('<script>alert(1)</script> Hello'); // -> " Hello"
+
+// Konfigurasi via Engine
+const engine = new AssistantEngine(data, undefined, {
+    security: {
+        maxLength: 500,
+        strictMode: true // Reject request jika terdeteksi ancaman
     }
-};
+});
 ```
 
----
+### D. Structured Logger
+Logging JSON standar untuk production.
 
-## 3. Advanced Configuration
-
-The `AssistantConfig` object allows you to customize the assistant's behavior for any industry.
-
-### 🧩 Phonetic Mapping
-Maps common user typos to correct keywords.
 ```typescript
-phoneticMap: {
-    "product": ["priduct", "prudukt", "prodak"],
-    "location": ["locatin", "lokasi", "alamat"]
-}
+import { logger } from 'assistant-in-a-box';
+logger.info('Search performed', { query: 'iphone', userId: '123' });
 ```
 
-### 🧠 Semantic Expansion
-Expands a single term into multiple synonyms for broader search coverage.
+### E. Sentiment Analysis Config 🎭
+Custom dictionary untuk mendeteksi emosi sesuai industri Anda.
+
 ```typescript
-semanticMap: {
-    "price": ["cost", "budget", "billing", "how much"],
-    "contact": ["help", "support", "call", "whatsapp"]
-}
+import { SentimentAnalyzer } from 'assistant-in-a-box';
+
+const analyzer = new SentimentAnalyzer({
+    positiveWords: { 'gacor': 3, 'manjur': 2 }, // Custom slang
+    negativeWords: { 'zonk': 3, 'lemot': 2 },
+    urgencyWords: ['darurat', 'kebakaran jenggot']
+});
+
+const result = analyzer.analyze('Barangnya gacor parah!'); 
+// -> Score positif tinggi
 ```
 
-### 🔍 Entity Definitions
-Identifies specific "concepts" in the query to trigger special logic.
+### F. Sales Reporter Config 📊
+Sesuaikan asumsi pendapatan dan mapping intent.
+
 ```typescript
-entityDefinitions: {
-    "isPremium": ["vip", "luxury", "elite"],
-    "isDiscount": ["promo", "cheap", "sale"]
-}
+import { SalesReporter } from 'assistant-in-a-box';
+
+const reporter = new SalesReporter(analyticsEngine, {
+    currencySymbol: 'USD',
+    avgOrderValue: 50, // Nilai rata-rata order $50
+    leadConversionRate: 0.2 // Asumsi 20% lead closing
+});
+
+console.log(reporter.getHtmlSummary());
 ```
 
-### 🎯 Intent Rules
-Fitur paling powerful untuk mengarahkan user. Memaksa engine memprioritaskan kategori tertentu berdasarkan kata kunci atau entity yang terdeteksi.
+### G. Sentiment-Aware & Adaptive Response 🎭
+Bot akan menyesuaikan nada bicara berdasarkan emosi pelanggan (Positive/Negative).
+
 ```typescript
-intentRules: [
-    {
-        intent: "layanan_premium",
-        conditions: {
-            tokens: ["vip", "luxury", "eksklusif"],
-            entities: ["isPremium"]
-        }
+const engine = new AssistantEngine(data, undefined, {
+    sentiment: {
+        positiveWords: { 'gacor': 3 },
+        negativeWords: { 'kecewa': 3 }
+    },
+    sentimentPrefixes: {
+        negative: ["Mohon maaf kak.", "Aduh, maaf ya."],
+        positive: ["Wah, asik! ", "Senang mendengarnya! "]
     }
-]
+});
 ```
+> [!TIP]
+> Jika sentimen terdeteksi **negative**, engine akan otomatis menyisipkan *Objection Prefix* simpatik sebelum memberikan jawaban untuk meredam kekhawatiran pelanggan.
 
-### 🌐 Hybrid Mode (Local vs Server)
-Anda bisa memilih untuk menjalankan pencarian secara lokal (Client-side) atau melalui API (Server-side).
+
+### H. NLP Classifier Config 🧠
+Latih chatbot dengan data kalimat khusus bisnis Anda.
 
 ```typescript
-searchMode: 'remote', // Default: 'local'
-apiUrl: [
-    'https://api.laravel-app.com/search',
-    'https://api.codeigniter-app.com/search'
-] // Bisa string tunggal atau Array of URLs
+import { NLPClassifier } from 'assistant-in-a-box';
+
+const nlp = new NLPClassifier({
+    useClassifier: true,
+    trainingData: {
+        'sales.price': ['cek harga', 'berapaan', 'price'],
+        'support.refund': ['minta refund', 'balikin duit', 'retur']
+    }
+});
+```
+
+### H. Hybrid AI (LLM) Config 🤖
+Hubungkan dengan OpenAI atau model lain (compatible endpoint).
+
+```typescript
+import { HybridAI } from 'assistant-in-a-box';
+
+const ai = new HybridAI({
+    apiKey: 'sk-xxx',
+    model: 'gpt-4',
+    apiUrl: 'https://api.openai.com/v1/chat/completions',
+    systemPrompt: 'Kamu adalah CS toko sepatu yang gaul.'
+});
+```
+
+### I. Smart Reference Resolution (Anaphora) 🧠
+Engine dapat memahami pertanyaan lanjutan tanpa menyebutkan subjeknya lagi (misal: "harganya berapa?").
+
+```typescript
+const engine = new AssistantEngine(data, undefined, {
+    // Kata kunci yang memicu resolusi subjek dari history
+    referenceTriggers: ['berapa', 'harganya', 'stok', 'fitur', 'warna']
+});
+```
+
+### J. Proactive Sales Psychology 📈
+Meningkatkan konversi dengan pemicu psikologis otomatis (FOMO, Social Proof, Closing Nudges).
+
+```typescript
+const engine = new AssistantEngine(data, undefined, {
+    salesPsychology: {
+        enableFomo: true,
+        enableSocialProof: true,
+        crossSellRules: [
+            { triggerCategory: 'Laptop', suggestCategory: 'Aksesoris', messageTemplate: 'Beli ini juga kak?' }
+        ]
+    }
+});
 ```
 > [!NOTE]
-> Jika menggunakan banyak URL, results akan digabung dan diranking ulang secara otomatis sesuai relevansi.
+> Engine akan otomatis menambahkan *Closing Questions* (pertanyaan pancingan) pada akhir jawaban jika mendeteksi intent pembelian yang kuat (misal: `sales_beli`).
 
-### 🔒 Keamanan Produksi (Rekomendasi)
-Untuk keamanan maksimal agar API Key **tidak terekspos sama sekali** di browser, gunakan pattern **"Server-Side Proxy"**:
-
-1. **Browser** memanggil script PHP di domain yang sama (Tanpa API Key).
-2. **Script PHP** bertindak sebagai perantara yang menempelkan API Key dan memanggil API tujuan.
-
-#### Konfigurasi di Browser (Aman):
-```typescript
-const config = {
-    searchMode: 'remote',
-    apiUrl: '/api/assistant-proxy.php' // Panggil file lokal Anda sendiri
-    // Tidak butuh apiHeaders di sini!
-};
-```
-
-### 🔀 Compound Query Configuration
-Konfigurasi bagaimana bot memisahkan kalimat majemuk:
-```typescript
-conjunctions: ['trus', 'dan', 'lalu', 'plus'], // Daftar kata sambung (Array)
-// ATAU gunakan Regex kustom:
-// conjunctions: /\s+(?:kemudian|setelah\s+itu)\s+/gi
-```
-
-### 🏷️ Attribute Label Customization
-Ubah tampilan nama atribut tanpa merubah data asli:
-```typescript
-attributeLabels: {
-    'harga': 'Investasi',
-    'garansi': 'Jaminan Layanan',
-    'kapasitas': 'Daya Tampung'
-}
-```
-
-### 🏗️ Internal Schema Configuration (New)
-Jika data Anda menggunakan kunci internal yang berbeda atau Anda ingin melokalisasi kunci mapping atribut:
-```typescript
-schema: {
-    PRICE: 'harga',
-    PRICE_PROMO: 'harga_promo',
-    BADGE: 'badge',
-    RECOMMENDED: 'direkomendasikan',
-    FEATURES: 'fitur',
-    RATING: 'rating',
-    WARRANTY: 'garansi'
-}
-```
-
-### 📋 Feature Extraction Patterns
-Anda bisa menentukan bagaimana engine mengekstrak fitur/kelebihan dari deskripsi produk:
-```typescript
-featurePatterns: [
-    /(?:fitur|feature|keunggulan)[:\s]*([^.]+)/gi,
-    /(?:•|✓)([^•✓\n]+)/g
-]
-```
-
-
-#### Isi file `assistant-proxy.php` (Server-side):
-```php
-<?php
-// 1. Verifikasi asal request (CORS)
-header("Access-Control-Allow-Origin: https://toko-anda.com");
-
-// 2. Ambil query dari browser
-$query = $_GET['q'] ?? '';
-
-// 3. Panggil API asli dengan SECRET KEY di sisi server
-$apiUrl = "https://api.internal-search.com/v1?q=" . urlencode($query);
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $apiUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "X-API-Key: SUPER_SECRET_KEY_ANDA" // Kunci ini AMAN di server
-]);
-
-$response = curl_exec($ch);
-echo $response; // Kirim balik hasil ke chatbot
-```
-
-> [!TIP]
-> **Kesimpulan**: Gunakan `apiHeaders` hanya untuk kebutuhan testing atau internal. Untuk website live/produksi, selalu gunakan **Server-Side Proxy** di atas agar data dan kunci Anda tetap privat.
 
 ---
 
-## 4. Site Crawler & Auto-Discovery 🕷️
+## 5. Indonesian NLP Core 🇮🇩
 
-Library ini memiliki built-in **Site Crawler** yang secara otomatis menjelajahi website Anda untuk menemukan produk dan konten baru tanpa perlu update manual di `data.json`.
+Library ini memiliki parser khusus Bahasa Indonesia bawaan.
 
-### Konfigurasi Dasar
-Secara default, crawler aktif dan akan mencoba mengindeks halaman yang terhubung dari halaman utama.
+### Date Parser
+Mengerti ekspresi waktu natural.
+- "Besok" -> Date object (H+1)
+- "Minggu depan" -> Date object (H+7)
+- "Tanggal 15" -> Date object (Tanggal 15 bulan ini)
 
-```typescript
-const config = {
-    // Crawler options
-    autoCrawl: true,          // Set false to disable
-    crawlMaxDepth: 2,         // Kedalaman link (Deep crawl)
-    crawlMaxPages: 50,        // Maksimal jumlah halaman yang discan
-    crawlIgnorePatterns: [    // Pola URL yang diabaikan
-        '/admin',
-        '/login',
-        '#',
-        /\.pdf$/i
-    ]
-};
-```
+### Number Parser
+Mengerti format uang Indonesia.
+- "2.5jt" -> 2500000
+- "500rb" -> 500000
+- "seratus ribu" -> 100000
 
-### Cara Kerja
-1. Saat inisialisasi, **AssistantController** akan menjalankan crawler di background.
-2. Crawler akan mem-fetch konten halaman internal (Same-Origin).
-3. Konten (Title, Meta Description, Body Text) diekstrak dan dibersihkan.
-4. Data baru otomatis ditambahkan ke **AssistantEngine** agar bisa dicari user.
-
-> [!NOTE]
-> Crawler hanya berjalan pada mode browser (client-side) dan mengikuti aturan `Same-Origin Policy`. Pastikan halaman Anda dapat diakses via AJAX/Fetch.
+### Sentiment Analyzer
+Mendeteksi emosi dan urgensi pelanggan.
+- "Kecewa berat!!" -> Negative + Urgent
+- "Bagus banget" -> Positive + High Intensity
 
 ---
 
-## 4. Scoring & Ranking Mechanism ⚖️
+## 6. Integrasi Frontend (Legacy)
 
-Engine ini menggunakan sistem **Composite Scoring** (Fuzzy + NLP + Business Logic).
+Untuk penggunaan di browser (non-Node.js), fitur UI Controller dan Crawler masih tersedia seperti versi sebelumnya.
 
-### Komponen Skor Utama:
-1. **Fuzzy Base (Fuse.js)**: Pencarian awal berbasis *approximate string matching*.
-2. **Dice Coefficient (NLP Layer)**: Mengukur kemiripan bigram antar kata. Sangat efektif untuk menangkap kecocokan bagian kalimat meskipun ada sedikit typo.
-3. **Indonesian Stemmer (SastrawiJs built-in)**: Menggunakan algoritma **Nazief & Adriani** yang sangat akurat untuk mengubah kata berimbuhan menjadi kata dasar (misal: "perekonomian" -> "ekonomi", "keberangkatan" -> "berangkat") secara otomatis.
-4. **Punctuation Signals**:
-   - **Question Mark (`?`)**: Memberikan **Inquiry Boost** (+15 pts) untuk item yang memiliki kolom `answer`.
-   - **Exclamation Mark (`!`)**: Memberikan **Urgency Boost** (+10 pts) untuk meningkatkan visibilitas hasil.
-5. **Weighted Match**:
-   - **Title Match**: Bobot paling tinggi (+20 pts).
-   - **Dice Phrase Bonus**: Bonus hingga +40 pts jika seluruh query memiliki kemiripan tinggi dengan judul.
-   - **Sequential Bonus**: Bonus jika kata kunci muncul berurutan.
-
-### Sales-Driven Boost:
-- **Recommended Item**: +25 pts.
-- **Sales Intent (Beli/Harga/Promo)**: +30 pts jika item memiliki harga.
-- **Product Badge**: +15 pts.
-
----
-
-## 5. UI Implementation
-
-### Selectors
-Define the IDs of your HTML elements in a `selectors` object:
-```typescript
-const selectors = {
-    overlayId: "search-overlay",
-    inputId: "search-input",
-    sendBtnId: "send-btn",
-    closeBtnId: "close-search",
-    chatContainerId: "chat-container",
-    messagesListId: "messages-list",
-    typingIndicatorId: "typing-indicator",
-    quickLinksClass: "quick-link-chip", // CSS Class
-    welcomeMsgClass: "assistant-bubble" // CSS Class
-};
+### Quick Start (Browser)
+```html
+<script src="dist/index.global.js"></script>
+<script>
+    const app = new Assistant.AssistantController(data);
+    app.openAssistant();
+</script>
 ```
 
-### Initialization
-```typescript
-import { AssistantController } from "./index"; // Or from your main entry point
-
-// Fuse.js is now internal, you don't need to pass it anymore!
-const app = new AssistantController(myData, undefined, selectors, config);
-app.openAssistant();
-```
-
-### Async Search Support
-Pencarian sekarang bersifat asynchronous. Jika Anda menggunakan `AssistantEngine` secara langsung:
-```typescript
-const result = await engine.search("permintaan user");
-```
-
----
-
-## 6. Full UI Customization (V3) 🎨
-
-Anda sekarang dapat mengambil kendali penuh atas tampilan chat tanpa harus memodifikasi core library. Cukup berikan fungsi render kustom melalui `uiTemplates` di konfigurasi.
-
-### 🧩 Available Templates
-| Template Hook | Description | Parameters |
-| :--- | :--- | :--- |
-| `renderUserMessage` | HTML wrapper untuk pesan dari user. | `(text: string)` |
-| `renderAssistantContainer` | Wrapper utama bubble asisten (termasuk icon/container). | `(contentHTML: string, result: AssistantResult)` |
-| `renderResultCard` | Tampilan kartu produk/hasil pencarian. | `(item: AssistantDataItem, index: number, isPrimary: boolean)` |
-| `renderComparison` | Tampilan tabel/hasil perbandingan produk. | `(comparison: ComparisonResult)` |
-
-### 🛠️ Example Implementation
-Anda bisa memisahkan logic UI ke file tersendiri (misal: `ui-templates.js`):
-
-```javascript
-const myTemplates = {
-    renderUserMessage: (text) => `
-        <div class="my-custom-user-bubble">
-            <p>${text}</p>
-        </div>`,
-    
-    renderResultCard: (item, idx, isPrimary) => `
-        <div class="result-card ${isPrimary ? 'featured' : ''}">
-            <img src="${item.image_url}" />
-            <h4>${item.title}</h4>
-            <button onclick="window.location.href='${item.url}'">View</button>
-        </div>`
-};
-
-// Inisialisasi dengan templates
-const config = {
-    // ... config lainnya
-    uiTemplates: myTemplates
-};
-```
-
-> [!TIP]
-> **Pro Tip**: Gunakan framework CSS seperti **Tailwind CSS** atau **Bootstrap** di dalam string HTML template Anda untuk styling yang sangat cepat dan responsif.
-
----
-
-## 7. Session Persistence
-The library automatically saves chat history to `localStorage` under the key `assistant_chat_history`. It will automatically re-render the history upon initialization.
-
-To clear history programmatically:
-```typescript
-// Exposed to window via controller
-window.clearSearchHistory();
-```
+Lihat bagian [Quick Start V1](#) di dokumentasi lama untuk detail UI customization.
 
 ---
 
 ## 7. Production Checklist 🚀
 
-1. [ ] **Minify Bundle**: Jalankan `npm run build` untuk mendapatkan file `index.global.js` yang terkompresi.
-2. [ ] **Config Externalization**: Pastikan `assistant-config.js` sudah sesuai dengan branding & keyword produk Anda.
-3. [ ] **Validation**: Jalankan `npm test` untuk memastikan semua logic core berjalan normal.
-4. [ ] **Remote Mode (Optional)**: Jika data produk > 1.000, siapkan backend API dan gunakan `searchMode: 'remote'`.
-5. [ ] **Security**: Gunakan **Server-Side Proxy** jika Anda memanggil external API yang membutuhkan API Key.
-6. [ ] **Mobile Touch**: Pastikan CSS `style.css` memberikan area sentuh yang cukup besar untuk tombol input & send.
-
+1. [ ] **Environment**: Set `.env` untuk konfigurasi threshold sales & security.
+2. [ ] **Telemetry**: Pastikan `AnalyticsEngine` terhubung ke dashboard monitoring Anda.
+3. [ ] **Security**: Aktifkan `AIB_SECURITY_STRICT_MODE` di server production.
+4. [ ] **Caching**: Gunakan `CacheManager` jika traffic tinggi.
+5. [ ] **Minify**: Gunakan build `dist/index.js` (CJS) atau `dist/index.mjs` (ESM).

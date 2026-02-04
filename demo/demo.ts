@@ -26,6 +26,26 @@ const config: AssistantConfig = {
     whatsappNumber: "62812345678",
     salesTriggers: {
         'beli': ['order', 'pesan']
+    },
+    // NEW: Fully Configurable Enterprise Modules
+    salesReporter: {
+        currencySymbol: 'USD',
+        avgOrderValue: 500, // Custom business assumption
+    },
+    nlp: {
+        useClassifier: true,
+        trainingData: {
+            'custom.intent': ['trigger custom', 'my custom intent']
+        }
+    },
+    hybridAI: {
+        apiKey: 'mock-key', // Using mock key for demo
+        model: 'gpt-3.5-turbo',
+        apiUrl: 'http://localhost:1234/v1/chat/completions' // Example local LLM endpoint
+    },
+    sentimentPrefixes: {
+        negative: ["Waduh, maaf ya kak.", "Sabar ya kak, kami bantu cek."],
+        positive: ["Yeay! ", "Asik! "]
     }
 };
 
