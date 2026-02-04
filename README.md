@@ -1,117 +1,42 @@
-# AI Search Core Library 🧠
+# Assistant-in-a-Box 🤖💎
 
-A **Context-Aware, Intent-Driven Search Engine** designed for any domain (E-commerce, Travel, SaaS, etc.).
+**Sales-Driven by Default.** A lightweight, high-conversion chatbot engine for any landing page.
 
-This library provides a flexible "brain" for your search bar. Unlike standard search engines (Algolia, Fuse.js) that only match text, **AI Search Core** understands:
-1.  **Context**: Remembers what the user just saw or asked.
-2.  **Intent**: Detects if user wants to "buy", "compare", or "find info".
-3.  **Preferences**: Boosts results based on user stats (e.g., "Apple fan", "Budget shopper").
+This library transform your static "Search Data" into a proactive sales assistant. It understands intent, handles typos, expands synonyms, and **prioritizes products when users show buying intent.**
 
-## Installation
+## Features
+- 💰 **Sales-Driven Scoring**: Automatically boosts products with prices, discounts, or "Recommended" tags when transaction keywords (buy, price, promo) are detected.
+- 🌍 **Universal Language Support**: Built-in support for Indonesian & English, fully customizable for any other language.
+- 🚀 **Hybrid Remote Mode**: Search locally for speed or fetch from multiple APIs in parallel (Laravel, CodeIgniter, etc.) with auto-merging.
+- 🎨 **Lush UI Components**: Includes a complete chat controller with badge animations, price comparison cards, and high-visibility CTAs.
+- 🔒 **Secure-by-Design**: Integrated support for custom Auth headers and Server-Side Proxy patterns.
 
-```bash
-npm install ai-search-core fuse.js
-```
+## Getting Started
 
-## Quick Start
+Since this is a private library, follow these steps to integrate:
 
-### 1. Define your Data
-Your data can be anything. We just need a standard structure to index.
-
-```typescript
-const products = [
-  { id: 1, title: 'iPhone 15', category: 'Smartphone', price: 999 },
-  { id: 2, title: 'MacBook Air', category: 'Laptop', price: 1200 },
-  { id: 3, title: 'Samsung S24', category: 'Smartphone', price: 899 },
-];
-```
-
-### 2. Configure the Brain
-Define how the AI should "think".
+1. **Copy Files**: Download or clone the `/library` folder into your project's assets/lib directory.
+2. **Setup Data**: Create a `search-data.json` following the `AssistantDataItem` structure.
+3. **Initialize**:
 
 ```typescript
-import { CoreEngine, AIConfig } from 'ai-search-core';
-import Fuse from 'fuse.js';
+import { AssistantController } from './lib/assistant/index';
 
-const config: AIConfig = {
-    // 1. Synonym Mapping
-    synonyms: {
-        'hp': ['smartphone', 'phone', 'mobile'],
-        'mac': ['macbook', 'laptop']
-    },
+const app = new AssistantController(myData, undefined, selectors, {
+    whatsappNumber: '62812345678',
+    salesTriggers: {
+        'beli': ['order', 'pesan', 'ambil']
+    }
+});
 
-    // 2. Define Intents (What is the user trying to do?)
-    intents: [
-        { name: 'check_price', patterns: ['how much', 'price', 'cost', 'biaya'] },
-        { name: 'compare', patterns: ['vs', 'difference', 'compare', 'beda'] }
-    ],
-
-    // 3. Boosting Rules (Business Logic)
-    boostingRules: [
-        // Rule: If asking for price, boost items with prices displayed
-        { 
-            condition: (item, ctx, intent) => intent === 'check_price' && item.price > 0,
-            score: 20 
-        },
-        // Rule: If user is an "Apple Fan" (tracked in context), boost Apple products
-        {
-            condition: (item, ctx) => ctx.userPreferences.brand === 'Apple' && item.title.includes('iPhone'),
-            score: 50 
-        }
-    ]
-};
+app.openAssistant();
 ```
 
-### 3. Initialize & Search
+## Why different?
+Unlike standard search bars that just show matching text, **Assistant-in-a-Box** calculates a "Business relevance" score. If a user asks *"How much is it?"*, the engine won't just look for the word "how", it will proactively identify that the user is ready to buy and push your best-priced products to the top with a "Pesan Sekarang" button.
 
-```typescript
-const engine = new CoreEngine(products, Fuse, config);
-
-// Simulation
-const result = engine.search("berapa harga hp?");
-
-console.log(result.intent); // 'check_price'
-console.log(result.results); // [iPhone 15, Samsung S24, ...] (Boosted by intent)
-```
-
-## Advanced Features
-
-### Context Memory
-The engine remembers the conversation turn-by-turn.
-
-```typescript
-// Turn 1
-engine.search("Lihat iPhone 15"); 
-// Engine remembers: lastTopic = 'Smartphone', lastItem = 'iPhone 15'
-
-// Turn 2 (Follow-up)
-engine.search("Warnanya apa aja?");
-// Engine knows "Warnanya" refers to "iPhone 15" from previous turn.
-```
-
-### Setting User Preferences Dynamically
-You can feed external signals into the engine (e.g., from buttons or user profile).
-
-```typescript
-// User clicked "Apple" filter button in UI
-engine.setPreference('brand', 'Apple');
-
-// Next search will heavily boost Apple products due to the BoostingRule we defined above.
-engine.search("laptop terbaik"); // -> MacBook will be top result
-```
-
-## API Reference
-
-### `CoreEngine`
-- `constructor(data, FuseClass, config)`
-- `search(query: string): SearchResult`
-- `setPreference(key, value): void`
-
-### `AIConfig`
-- `synonyms`: `Record<string, string[]>`
-- `stopWords`: `string[]`
-- `intents`: `IntentDefinition[]`
-- `boostingRules`: `BoostingRule[]`
+## Documentation
+For full configuration (Phonetic mapping, Intent Rules, Proxy Setup), see [DOCUMENTATION.md](./DOCUMENTATION.md).
 
 ## License
 MIT

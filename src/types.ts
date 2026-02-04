@@ -1,61 +1,58 @@
-export interface SearchDataItem {
+export interface AssistantDataItem {
     title: string;
     description: string;
+    answer?: string;
+    url: string;
     category: string;
-    keywords?: string[];
-    [key: string]: any; // Allow custom properties
+    keywords: string[];
+    price_numeric?: number;
+    sale_price?: number;
+    badge_text?: string;
+    cta_label?: string;
+    cta_url?: string;
+    image_url?: string;
+    is_recommended?: boolean;
+    [key: string]: any; // Allow for custom extra data
 }
 
-export interface SearchResult {
-    results: SearchDataItem[];
+export interface AssistantResult {
+    results: AssistantDataItem[];
     intent: string;
+    entities: Record<string, boolean>;
     confidence: number;
-    context: SearchContext;
-    stats: SearchStats;
 }
 
-export interface SearchContext {
-    history: ConversationTurn[];
-    lastTopic: string | null;
-    lastItemContext: string | null; // Generic "Item" instead of "Package"
-    userPreferences: Record<string, any>; // Generic preferences
-}
-
-export interface ConversationTurn {
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: number;
-    intent?: string;
-}
-
-export interface SearchStats {
-    totalQueries: number;
-    intentCounts: Record<string, number>;
-}
-
-export interface IntentDefinition {
-    name: string;
-    patterns: string[]; // Keywords or phrases
-    boost?: number;
-}
-
-export interface BoostingRule {
-    name?: string;
-    condition: (item: SearchDataItem, context: SearchContext, intent: string) => boolean;
-    score: number;
-}
-
-export interface AIConfig {
-    synonyms?: Record<string, string[] | string>; // Support simple map and array map
+export interface AssistantConfig {
+    phoneticMap?: Record<string, string[]>;
+    semanticMap?: Record<string, string[]>;
     stopWords?: string[];
-    intents?: IntentDefinition[];
-    boostingRules?: BoostingRule[];
-    weights?: {
-        title?: number;
-        keywords?: number;
-        description?: number;
-    };
-    stemmingSuffixes?: string[]; // List of suffixes to strip (e.g. ['nya', 'kan'])
+    entityDefinitions?: Record<string, string[]>;
+    intentRules?: IntentRule[];
+    whatsappNumber?: string;
+    stemmingSuffixes?: string[];
+    salesTriggers?: Record<string, string[]>;
     searchMode?: 'local' | 'remote';
-    apiUrl?: string;
+    apiUrl?: string | string[];
+    apiHeaders?: Record<string, string>;
+}
+
+export interface IntentRule {
+    intent: string;
+    conditions: {
+        entities?: string[];
+        tokens?: string[];
+        categories?: string[];
+    };
+}
+
+export interface UISelectors {
+    overlayId: string;
+    inputId: string;
+    sendBtnId: string;
+    closeBtnId: string;
+    chatContainerId: string;
+    messagesListId: string;
+    typingIndicatorId: string;
+    quickLinksClass: string;
+    welcomeMsgClass: string;
 }

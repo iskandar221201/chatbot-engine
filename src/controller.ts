@@ -12,11 +12,11 @@ export class AssistantController {
 
     constructor(
         searchData: AssistantDataItem[],
-        Fuse: any,
-        selectors: UISelectors,
-        config: AssistantConfig
+        FuseClass: any = undefined,
+        selectors: UISelectors = {} as any,
+        config: AssistantConfig = {}
     ) {
-        this.engine = new AssistantEngine(searchData, Fuse, config);
+        this.engine = new AssistantEngine(searchData, FuseClass, config);
         this.selectors = selectors;
         this.config = config;
 
@@ -201,17 +201,35 @@ export class AssistantController {
             html += `<p class="text-sm md:text-base font-medium">${this.formatText(top.answer || top.description)}</p>`;
 
             // Visual Chips for results
-            const actionChips = results.filter(r => r.category !== 'Sapaan').slice(0, 3).map(item => `
-                <a href="${item.url}" class="flex items-center justify-between gap-3 p-4 bg-white hover:bg-primary/5 rounded-2xl border border-gray-100 hover:border-primary/40 transition-all group w-full shadow-sm hover:shadow-md mb-2">
-                    <div class="text-left w-full">
-                        <div class="flex items-center justify-between mb-1">
+            const actionChips = results.filter(r => r.category !== 'Sapaan').slice(0, 3).map((item, idx) => {
+                const isPrimary = idx === 0 && (item.price_numeric || item.sale_price || item.is_recommended);
+                const ctaText = item.cta_label || (item.category.includes('Produk') || item.category.includes('Layanan') ? "Pesan Sekarang" : "Lihat Detail");
+
+                return `
+                <a href="${item.cta_url || item.url}" class="flex flex-col gap-2 p-4 ${isPrimary ? 'bg-primary/5 border-primary/40 shadow-md ring-1 ring-primary/20' : 'bg-white border-gray-100'} hover:bg-primary/10 rounded-2xl border transition-all group w-full mb-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-wrap gap-1">
                             <span class="text-[8px] font-black text-white bg-primary px-1.5 py-0.5 rounded uppercase">${item.category}</span>
+                            ${item.badge_text ? `<span class="text-[8px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded uppercase">${item.badge_text}</span>` : ""}
                             ${item.is_recommended ? `<span class="text-[8px] font-bold text-white bg-orange-500 px-1.5 py-0.5 rounded uppercase animate-pulse">Rekomendasi</span>` : ""}
-                            ${item.price_numeric ? `<span class="text-[10px] font-bold text-primary">Rp ${(item.price_numeric / 1000000).toFixed(1)}Jt-an</span>` : ""}
                         </div>
-                        <h4 class="font-bold text-dark text-sm leading-tight">${item.title}</h4>
+                        ${item.price_numeric ? `
+                            <div class="text-right">
+                                ${item.sale_price ? `<span class="text-[10px] text-gray-400 line-through block">Rp ${(item.price_numeric / 1000000).toFixed(1)}Jt</span>` : ""}
+                                <span class="text-[12px] font-bold text-primary">Rp ${((item.sale_price || item.price_numeric) / 1000000).toFixed(1)}Jt-an</span>
+                            </div>
+                        ` : ""}
                     </div>
-                </a>`).join("");
+                    <h4 class="font-bold text-dark text-sm leading-tight group-hover:text-primary transition-colors">${item.title}</h4>
+                    <div class="flex items-center justify-between mt-1">
+                        <p class="text-[11px] text-gray-500 line-clamp-1 flex-1 mr-4">${item.description.substring(0, 60)}...</p>
+                        <span class="text-[10px] font-bold text-primary flex items-center gap-1 shrink-0">
+                            ${ctaText}
+                            <svg class="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
+                        </span>
+                    </div>
+                </a>`;
+            }).join("");
 
             if (actionChips) {
                 html += `<div class="mt-4">${actionChips}</div>`;
