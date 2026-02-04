@@ -103,11 +103,11 @@ declare class AssistantEngine {
     private calculateScore;
     private detectIntent;
     /**
-     * Default comparison triggers (multilingual)
+     * Get comparison triggers from config
      */
     private getComparisonTriggers;
     /**
-     * Default labels for comparison output (customizable)
+     * Get labels for comparison output from config
      */
     private getComparisonLabels;
     /**

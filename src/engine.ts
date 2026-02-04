@@ -364,31 +364,23 @@ export class AssistantEngine {
     // ===== PRODUCT COMPARISON SYSTEM =====
 
     /**
-     * Default comparison triggers (multilingual)
+     * Get comparison triggers from config
      */
     private getComparisonTriggers(): string[] {
-        const defaultTriggers = [
-            // Indonesian
-            'bandingkan', 'banding', 'perbandingan', 'beda', 'perbedaan', 'lebih bagus', 'lebih baik',
-            'mana yang', 'pilih mana', 'vs', 'versus', 'dibanding', 'ketimbang', 'daripada',
-            // English
-            'compare', 'comparison', 'difference', 'which is better', 'versus', 'vs', 'differ',
-            'choose between', 'better than', 'compared to'
-        ];
-        return this.config.comparisonTriggers || defaultTriggers;
+        return this.config.comparisonTriggers || [];
     }
 
     /**
-     * Default labels for comparison output (customizable)
+     * Get labels for comparison output from config
      */
     private getComparisonLabels() {
         const defaults = {
-            title: 'Produk',
-            price: 'Harga',
-            recommendation: '🏆 Rekomendasi',
-            bestChoice: 'Pilihan Terbaik',
-            reasons: 'Alasan',
-            noProducts: 'Tidak ada produk untuk dibandingkan.',
+            title: 'Product',
+            price: 'Price',
+            recommendation: 'Recommendation',
+            bestChoice: 'Best Choice',
+            reasons: 'Reasons',
+            noProducts: 'No products found to compare.',
             vsLabel: 'vs'
         };
         return { ...defaults, ...(this.config.comparisonLabels || {}) };
@@ -400,7 +392,25 @@ export class AssistantEngine {
     public isComparisonQuery(query: string): boolean {
         const triggers = this.getComparisonTriggers();
         const queryLower = query.toLowerCase();
-        return triggers.some(t => queryLower.includes(t));
+
+        // 1. Direct match
+        if (triggers.some(t => queryLower.includes(t))) return true;
+
+        // 2. Fuzzy match for triggers (handle "paleng" vs "paling", "rekomen" vs "rekomended")
+        const words = queryLower.split(/\s+/);
+        for (const word of words) {
+            for (const trigger of triggers) {
+                // Skip short triggers for fuzzy match to avoid false positives
+                if (trigger.length < 4) continue;
+
+                // Simple levenshtein-like check or substring check
+                if (this.calculateDiceCoefficient(word, trigger) > 0.7) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
