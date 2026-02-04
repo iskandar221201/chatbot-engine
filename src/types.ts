@@ -17,6 +17,13 @@ export interface AssistantDataItem {
     [key: string]: any; // Allow for custom extra data
 }
 
+export interface DiagnosticEvent {
+    id: string;
+    timestamp: number;
+    duration?: number;
+    meta?: Record<string, any>;
+}
+
 export interface AssistantResult {
     results: AssistantDataItem[];
     intent: string;
@@ -30,6 +37,7 @@ export interface AssistantResult {
         intensity: 'low' | 'medium' | 'high';
     };
     scoreBreakdown?: Record<string, number>;
+    diagnostics?: DiagnosticEvent[]; // Added for observability phase
 }
 
 // Comparison feature types

@@ -12,6 +12,7 @@ import {
     DEFAULT_COMPARISON_LABELS,
     DEFAULT_LABEL_MAP
 } from "../defaults";
+import { DiagnosticTracer } from "./diagnostic-tracer";
 
 export class QueryOrchestrator {
     private engines: {
@@ -46,8 +47,13 @@ export class QueryOrchestrator {
      * Main Search Entry Point
      */
     public async search(originalQuery: string): Promise<AssistantResult> {
+        const tracer = new DiagnosticTracer();
+
         // 1. Security Check
+        tracer.start('security_check');
         const securityResult = this.engines.security.process(originalQuery);
+        tracer.stop('security_check', { isValid: securityResult.isValid });
+
         if (!securityResult.isValid) {
             return {
                 results: [],
@@ -59,19 +65,27 @@ export class QueryOrchestrator {
         }
 
         // 2. Middleware Request Pipeline
+        tracer.start('middleware_request');
         const ctx = await this.engines.middleware.executeRequest(originalQuery);
+        tracer.stop('middleware_request');
+
         if (ctx.stop) return { results: [], intent: 'blocked', entities: {}, confidence: 0 };
 
         const query = ctx.query;
         this.engines.analytics.track('search', { query });
 
         // 3. Resolve Anaphora
+        tracer.start('anaphora_resolution');
         const enrichedQuery = this.engines.context.resolveAnaphora(query);
+        tracer.stop('anaphora_resolution');
 
         // 4. Sentiment Analysis
+        tracer.start('sentiment_analysis');
         const sentiment = this.engines.sentiment.analyze(originalQuery);
+        tracer.stop('sentiment_analysis');
 
         // 5. Compound Parsing
+        // ... (Compound parsing logic remains same, but we pass tracer to executeSubSearch)
         let conjunctions = this.config.conjunctions || DEFAULT_CONJUNCTIONS;
         if (Array.isArray(conjunctions)) {
             const escaped = conjunctions.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -117,7 +131,7 @@ export class QueryOrchestrator {
             let maxConfidence = 0;
 
             for (const subQ of subQueries) {
-                const subResult = await this.executeSubSearch(subQ);
+                const subResult = await this.executeSubSearch(subQ, tracer);
                 subResult.results.forEach(item => {
                     if (!combinedResults.find(r => r.title === item.title)) combinedResults.push(item);
                 });
@@ -140,35 +154,44 @@ export class QueryOrchestrator {
                     label: sentiment.label,
                     isUrgent: sentiment.isUrgent,
                     intensity: sentiment.intensity
-                }
+                },
+                diagnostics: tracer.getEvents()
             };
         }
 
-        return this.executeSubSearch(enrichedQuery);
+        return this.executeSubSearch(enrichedQuery, tracer);
     }
 
     /**
      * Internal Search Coordinator
      */
-    public async executeSubSearch(query: string): Promise<AssistantResult> {
-        const sentiment = this.engines.sentiment.analyze(query);
+    public async executeSubSearch(query: string, tracer: DiagnosticTracer): Promise<AssistantResult> {
         const limit = this.config.resultLimit || DEFAULT_UI_CONFIG.resultLimit;
 
-        // 1. Remote Search Check
+        // 1. Remote Search Check (Skipping tracer for remote for now)
         if (this.config.searchMode === 'remote' && this.config.apiUrl) {
-            const remoteResult = await this.handleRemoteSearch(query, sentiment, limit);
+            const remoteResult = await this.handleRemoteSearch(query, { score: 0, label: 'neutral' }, limit);
             if (remoteResult) return remoteResult;
         }
 
         // 2. Preprocessing
+        tracer.start('preprocessing');
         const processed = this.engines.prepro.process(query);
+        tracer.stop('preprocessing', { tokenCount: processed.tokens.length });
+
+        tracer.start('sentiment_analysis');
+        const sentiment = this.engines.sentiment.analyze(query);
+        tracer.stop('sentiment_analysis');
+
         if (sentiment.isUrgent) processed.signals.isUrgent = true;
 
         // 3. Local Search (Fuse)
         let candidates: any[] = [];
         if (this.fuse) {
+            tracer.start('fuse_search');
             const fuseResults = this.fuse.search(processed.expanded.join(' | '));
             candidates = fuseResults.map((f: any) => ({ item: f.item, fuseScore: f.score }));
+            tracer.stop('fuse_search', { rawResultCount: candidates.length });
         }
 
         // 4. Inject Context (History)
@@ -181,10 +204,13 @@ export class QueryOrchestrator {
         }
 
         // 5. Intent Detection
+        tracer.start('intent_detection');
         const stemmedTokens = processed.tokens.map((t: string) => this.engines.prepro.stem(t));
         const intent = this.engines.intent.detect(processed.tokens.join(' '), processed.tokens, stemmedTokens);
+        tracer.stop('intent_detection', { intent });
 
         // 6. Ranking (ScoringEngine)
+        tracer.start('scoring');
         const finalResults = candidates.map(c => {
             const { score, breakdown } = this.engines.scoring.calculate(c.item, processed, c.fuseScore, intent, contextState);
             return {
@@ -192,6 +218,7 @@ export class QueryOrchestrator {
                 score
             };
         }).sort((a, b) => b.score - a.score);
+        tracer.stop('scoring', { finalCandidateCount: finalResults.length });
 
         const isConversational = intent.startsWith('chat_');
         const topMatches = finalResults
@@ -211,22 +238,26 @@ export class QueryOrchestrator {
                 isUrgent: sentiment.isUrgent,
                 intensity: sentiment.intensity
             },
-            scoreBreakdown: finalResults.length > 0 ? finalResults[0].item.scoreBreakdown : undefined
+            scoreBreakdown: finalResults.length > 0 ? finalResults[0].item.scoreBreakdown : undefined,
+            diagnostics: tracer.getEvents()
         };
 
         this.engines.context.update(finalResult);
 
         // 8. Response Composition
+        tracer.start('response_composition');
         const answer = this.engines.response.compose(
             finalResult,
             intent,
             isConversational,
             (item: AssistantDataItem) => this.engines.prepro.extractAttributes(item)
         );
+        tracer.stop('response_composition');
 
         return {
             ...finalResult,
-            answer: answer
+            answer: answer,
+            diagnostics: tracer.getEvents() // Final snapshot
         };
     }
 

@@ -20,6 +20,7 @@ import { ResponseEngine } from "./lib/response-engine";
 import { PreprocessingEngine } from "./lib/preprocessing-engine";
 import { ScoringEngine } from "./lib/scoring-engine";
 import { QueryOrchestrator } from "./lib/query-orchestrator";
+import { IndonesianProvider, EnglishProvider } from "./lib/language-providers";
 // Security
 import { SecurityGuard } from "./lib/security-guard";
 
@@ -83,7 +84,9 @@ export class AssistantEngine {
             currencySymbol: this.config.currencySymbol,
             schema: this.config.schema
         }, this.salesPsychology);
+        const provider = this.config.locale === 'en' ? new EnglishProvider() : new IndonesianProvider();
         this.prepro = new PreprocessingEngine({
+            languageProvider: provider,
             phoneticMap: this.config.phoneticMap,
             stopWords: this.config.stopWords,
             semanticMap: this.config.semanticMap,

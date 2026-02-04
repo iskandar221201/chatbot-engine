@@ -188,6 +188,12 @@ interface AssistantDataItem {
     scoreBreakdown?: Record<string, number>;
     [key: string]: any;
 }
+interface DiagnosticEvent$1 {
+    id: string;
+    timestamp: number;
+    duration?: number;
+    meta?: Record<string, any>;
+}
 interface AssistantResult {
     results: AssistantDataItem[];
     intent: string;
@@ -201,6 +207,7 @@ interface AssistantResult {
         intensity: 'low' | 'medium' | 'high';
     };
     scoreBreakdown?: Record<string, number>;
+    diagnostics?: DiagnosticEvent$1[];
 }
 interface ComparisonItem {
     title: string;
@@ -430,11 +437,18 @@ declare class ResponseEngine {
 }
 
 /**
- * Preprocessing Engine Sub-Engine
- * Handles text normalization, phonetic correction, Indonesian linguistics, and semantic expansion.
+ * Language Provider System
+ * Abstracting linguistic logic (Normalization, Stemming, Stopwords) per language.
  */
+interface ILanguageProvider {
+    locale: string;
+    normalize(text: string): string;
+    stem(word: string): string;
+    getStopWords(): string[];
+}
 
 interface PreprocessingConfig {
+    languageProvider?: ILanguageProvider;
     phoneticMap?: Record<string, string[]>;
     stopWords?: string[];
     semanticMap?: Record<string, string[]>;
@@ -452,8 +466,7 @@ interface ProcessedQuery {
     };
 }
 declare class PreprocessingEngine {
-    private stemmer;
-    private tokenizer;
+    private provider;
     private config;
     private stemCache;
     constructor(config?: PreprocessingConfig);
@@ -508,6 +521,44 @@ declare class ScoringEngine {
 }
 
 /**
+ * Diagnostic Tracer
+ * Deep observability for the search pipeline.
+ * Captures timings, internal counts, and logic branches.
+ */
+interface DiagnosticEvent {
+    id: string;
+    timestamp: number;
+    duration?: number;
+    meta?: Record<string, any>;
+}
+declare class DiagnosticTracer {
+    private events;
+    private startTime;
+    private activePoints;
+    constructor();
+    /**
+     * Start a timed operation point
+     */
+    start(id: string): void;
+    /**
+     * Stop a timed operation point and record it
+     */
+    stop(id: string, meta?: Record<string, any>): void;
+    /**
+     * Record a simple point event
+     */
+    record(id: string, meta?: Record<string, any>): void;
+    /**
+     * Get all recorded events
+     */
+    getEvents(): DiagnosticEvent[];
+    /**
+     * Reset the tracer
+     */
+    reset(): void;
+}
+
+/**
  * Query Orchestrator Sub-Engine
  * Coordinates the search pipeline: Preprocessing -> Intent -> Search -> Scoring -> Response.
  * Handles compound queries, conjunctions, and remote/local coordination.
@@ -526,7 +577,7 @@ declare class QueryOrchestrator {
     /**
      * Internal Search Coordinator
      */
-    executeSubSearch(query: string): Promise<AssistantResult>;
+    executeSubSearch(query: string, tracer: DiagnosticTracer): Promise<AssistantResult>;
     private handleRemoteSearch;
     searchWithComparison(query: string): Promise<AssistantResult & {
         comparison?: ComparisonResult;
@@ -660,4 +711,4 @@ declare class SiteCrawler {
     private extractKeywords;
 }
 
-export { type AssistantConfig, AssistantController, type AssistantDataItem, AssistantEngine, type AssistantResult, type ComparisonItem, type ComparisonResult, type IntentRule, SiteCrawler, type UISelectors };
+export { type AssistantConfig, AssistantController, type AssistantDataItem, AssistantEngine, type AssistantResult, type ComparisonItem, type ComparisonResult, type DiagnosticEvent$1 as DiagnosticEvent, type IntentRule, SiteCrawler, type UISelectors };

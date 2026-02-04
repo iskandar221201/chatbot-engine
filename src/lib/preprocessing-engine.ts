@@ -1,18 +1,13 @@
-/**
- * Preprocessing Engine Sub-Engine
- * Handles text normalization, phonetic correction, Indonesian linguistics, and semantic expansion.
- */
-
-import { Stemmer, Tokenizer } from "./sastrawi";
+import { ILanguageProvider, IndonesianProvider } from "./language-providers";
 import {
     DEFAULT_PHONETIC_MAP,
-    DEFAULT_STOP_WORDS,
     DEFAULT_SEMANTIC_MAP,
     DEFAULT_ATTRIBUTE_EXTRACTORS
 } from "../defaults";
 import { AssistantDataItem, AssistantConfig } from "../types";
 
 export interface PreprocessingConfig {
+    languageProvider?: ILanguageProvider;
     phoneticMap?: Record<string, string[]>;
     stopWords?: string[];
     semanticMap?: Record<string, string[]>;
@@ -32,15 +27,13 @@ export interface ProcessedQuery {
 }
 
 export class PreprocessingEngine {
-    private stemmer: Stemmer;
-    private tokenizer: Tokenizer;
+    private provider: ILanguageProvider;
     private config: PreprocessingConfig;
     private stemCache: Map<string, string> = new Map();
 
     constructor(config: PreprocessingConfig = {}) {
         this.config = config;
-        this.stemmer = new Stemmer();
-        this.tokenizer = new Tokenizer();
+        this.provider = config.languageProvider || new IndonesianProvider();
     }
 
     /**
@@ -59,7 +52,7 @@ export class PreprocessingEngine {
      */
     public stem(word: string): string {
         if (this.stemCache.has(word)) return this.stemCache.get(word)!;
-        const result = this.stemmer.stem(word);
+        const result = this.provider.stem(word);
         this.stemCache.set(word, result);
         return result;
     }
@@ -73,8 +66,8 @@ export class PreprocessingEngine {
             isUrgent: query.includes('!'),
         };
 
-        const stopWords = this.config.stopWords ? new Set(this.config.stopWords) : new Set(DEFAULT_STOP_WORDS);
-        const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '');
+        const stopWords = this.config.stopWords ? new Set(this.config.stopWords) : new Set(this.provider.getStopWords());
+        const cleanQuery = this.provider.normalize(query);
         const rawWords = cleanQuery.split(/\s+/).filter(w => w.length > 1);
 
         // Auto-correction using config or defaults
@@ -86,7 +79,7 @@ export class PreprocessingEngine {
             return w;
         });
 
-        // Indonesian Stemming
+        // Stemming
         const stemmedWords = correctedWords.map(w => this.stem(w));
 
         // Combine and Filter

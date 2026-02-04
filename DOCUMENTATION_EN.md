@@ -269,8 +269,36 @@ console.log(result.scoreBreakdown);
 */
 ```
 
-### N. Performance Optimization (Memoization) ⚡
-`PreprocessingEngine` automatically performs *memoization* (caching) on Indonesian text stemming. This significantly reduces CPU load when handling repeated queries or long texts.
+### N. Globalization & Custom Language Providers 🌍
+Easily switch linguistic logic (stemming/stopwords) for different markets:
+
+```typescript
+const engine = new AssistantEngine(data, undefined, { 
+    locale: 'en' // Automatically uses EnglishProvider
+});
+
+// Or use a Custom Provider:
+const engineCustom = new AssistantEngine(data, undefined, {
+    prepro: {
+        languageProvider: new MyFrenchProvider()
+    }
+});
+```
+
+### O. Observability: Diagnostic Tracer 🕵️‍♂️
+Every search result now includes `diagnostics` metadata to help debug performance and logic:
+
+```typescript
+const result = await engine.search("cheap iphone");
+console.log(result.diagnostics);
+/* Output:
+[
+  { id: 'security_check', duration: 0.2, meta: { isValid: true } },
+  { id: 'preprocessing', duration: 1.5, meta: { tokenCount: 2 } },
+  { id: 'scoring', duration: 3.2, meta: { finalCandidateCount: 15 } }
+]
+*/
+```
 
 ---
 

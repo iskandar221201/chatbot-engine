@@ -271,6 +271,37 @@ console.log(result.scoreBreakdown);
 ### M. Performance Optimization (Memoization) ⚡
 `PreprocessingEngine` secara otomatis melakukan *memoization* (caching) pada proses *stemming* bahasa Indonesia. Hal ini mengurangi beban CPU secara signifikan saat menangani query berulang atau teks yang panjang.
 
+### N. Globalisasi & Custom Language Providers 🌍
+Anda bisa mengganti logika linguistik (stemming/stopwords) dengan mudah:
+
+```typescript
+const engine = new AssistantEngine(data, undefined, { 
+    locale: 'en' // Otomatis menggunakan EnglishProvider
+});
+
+// Atau gunakan Provider Custom:
+const engineCustom = new AssistantEngine(data, undefined, {
+    prepro: {
+        languageProvider: new MyFrenchProvider()
+    }
+});
+```
+
+### O. Observability: Diagnostic Tracer 🕵️‍♂️
+Setiap hasil pencarian kini membawa data `diagnostics` untuk membantu debugging performa dan logika:
+
+```typescript
+const result = await engine.search("iphone murah");
+console.log(result.diagnostics);
+/* Output:
+[
+  { id: 'security_check', duration: 0.2, meta: { isValid: true } },
+  { id: 'preprocessing', duration: 1.5, meta: { tokenCount: 2 } },
+  { id: 'scoring', duration: 3.2, meta: { finalCandidateCount: 15 } }
+]
+*/
+```
+
 
 ---
 
