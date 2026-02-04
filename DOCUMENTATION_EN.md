@@ -1,12 +1,10 @@
-# Assistant-in-a-Box: Dokumentasi Teknis 📚
+# Assistant-in-a-Box: Technical Documentation 📚
 
-[🇺🇸 English Version](file:///c:/Users/USER/Pictures/a/landingpages/library/chatbot-engine/DOCUMENTATION_EN.md)
-
-Panduan lengkap mengenai Enterprise Sales-Driven Chatbot Engine.
+This guide provides a comprehensive overview of the Enterprise Sales-Driven Chatbot Engine.
 
 ---
 
-## 1. Arsitektur Umum
+## 1. Architecture Overview
 
 The library is a modular enterprise framework:
 
@@ -21,10 +19,10 @@ The library is a modular enterprise framework:
 
 ## 2. Server-Side Integration (Node.js) 🆕
 
-Library ini sekarang **100% Server-Side Ready** (Node.js/Bun/Deno).
+The library is now **100% Server-Side Ready** (Node.js/Bun/Deno).
 
-### Konfigurasi via Environment Variables
-Buat file `.env` di root project Anda:
+### Configuration via Environment Variables
+Create a `.env` file in your project root:
 
 ```bash
 # Security
@@ -39,7 +37,7 @@ AIB_SALES_WEIGHT_INTENT=35
 AIB_SESSION_TIMEOUT_MIN=60
 ```
 
-Load konfigurasi di aplikasi Anda:
+Load the configuration in your application:
 ```typescript
 import { AssistantEngine, ConfigLoader } from 'assistant-in-a-box';
 
@@ -51,39 +49,39 @@ const engine = new AssistantEngine(data, Fuse, config);
 
 ## 3. Sales-Driven Modules 💰
 
-Fitur utama untuk meningkatkan konversi penjualan.
+Key features to increase sales conversion.
 
 ### A. Lead Scoring
-Menilai user berdasarkan intent (beli/tanya), urgensi (capslock/tanda seru), dan engagement.
+Evaluate users based on intent (buy/ask), urgency (caps/exclamation), and engagement.
 
 ```typescript
 import { LeadScoring } from 'assistant-in-a-box';
 const scorer = new LeadScoring();
-const result = scorer.score('mau order sekarang dong, urgent!');
+const result = scorer.score('want to order now, urgent!');
 
 // result.grade -> 'hot'
 // result.score -> 85
 ```
 
 ### B. Budget Matcher
-Otomatis mendeteksi budget user dan mencocokkan produk.
+Automatically detect user budget and match products.
 
 ```typescript
 import { BudgetMatcher } from 'assistant-in-a-box';
 const matcher = new BudgetMatcher();
-const matches = matcher.match('cari hp budget 3 jutaan', productList);
+const matches = matcher.match('looking for phone budget 3 million', productList);
 
-// matches.suggestion -> "Ada 3 produk yang pas dengan budget 3jt..."
+// matches.suggestion -> "There are 3 products matching your 3m budget..."
 ```
 
 ### C. Follow-Up Suggester
-Memberikan saran pertanyaan lanjutan untuk membantu closing.
+Provide suggested follow-up questions to help closing.
 
 ```typescript
 import { FollowUpSuggester } from 'assistant-in-a-box';
 const suggester = new FollowUpSuggester();
-const questions = suggester.suggest('sales_harga');
-// -> ["Apakah budget ini sudah fix?", "Mau info cicilan?"]
+const questions = suggester.suggest('sales_price');
+// -> ["Is this budget fixed?", "Want info on installments?"]
 ```
 
 ---
@@ -91,7 +89,7 @@ const questions = suggester.suggest('sales_harga');
 ## 4. Enterprise Features 🏢
 
 ### A. Middleware Pipeline (Interceptor)
-Intercept request/response untuk custom logic (seperti Express.js).
+Intercept requests/responses for custom logic (similar to Express.js).
 
 ```typescript
 import { MiddlewareManager } from 'assistant-in-a-box';
@@ -111,7 +109,7 @@ mw.useResponse(async (result, ctx, next) => {
 ```
 
 ### B. Analytics & Telemetry
-Hook data event ke Google Analytics atau Datadog.
+Hook data events to Google Analytics or Datadog.
 
 ```typescript
 import { AnalyticsEngine } from 'assistant-in-a-box';
@@ -119,30 +117,30 @@ const analytics = new AnalyticsEngine();
 
 analytics.onEvent((event) => {
     console.log(`[${event.type}]`, event.payload);
-    // Kirim ke external API
+    // Send to external API
 });
 ```
 
 ### C. SecurityGuard
-Proteksi input dari serangan XSS dan SQL Injection sederhana. Engine menggunakan modul ini secara otomatis pada setiap request sebelum proses pencarian dilakukan.
+Input protection from XSS and basic SQL Injection attacks. The engine uses this module automatically on every request before the search process.
 
 ```typescript
 import { SecurityGuard } from 'assistant-in-a-box';
 
-// Sanitasi Input Manual
+// Manual Input Sanitization
 const safeQuery = SecurityGuard.clean('<script>alert(1)</script> Hello'); // -> " Hello"
 
-// Konfigurasi via Engine
+// Configuration via Engine
 const engine = new AssistantEngine(data, undefined, {
     security: {
         maxLength: 500,
-        strictMode: true // Reject request jika terdeteksi ancaman
+        strictMode: true // Reject request if threats detected
     }
 });
 ```
 
 ### D. Structured Logger
-Logging JSON standar untuk production.
+Standard JSON logging for production.
 
 ```typescript
 import { logger } from 'assistant-in-a-box';
@@ -150,72 +148,72 @@ logger.info('Search performed', { query: 'iphone', userId: '123' });
 ```
 
 ### E. Sentiment Analysis Config 🎭
-Custom dictionary untuk mendeteksi emosi sesuai industri Anda.
+Custom dictionary to detect emotions specific to your industry.
 
 ```typescript
 import { SentimentAnalyzer } from 'assistant-in-a-box';
 
 const analyzer = new SentimentAnalyzer({
-    positiveWords: { 'gacor': 3, 'manjur': 2 }, // Custom slang
-    negativeWords: { 'zonk': 3, 'lemot': 2 },
-    urgencyWords: ['darurat', 'kebakaran jenggot']
+    positiveWords: { 'awesome': 3, 'great': 2 },
+    negativeWords: { 'bad': 3, 'slow': 2 },
+    urgencyWords: ['emergency', 'immediately']
 });
 
-const result = analyzer.analyze('Barangnya gacor parah!'); 
-// -> Score positif tinggi
+const result = analyzer.analyze('This is awesome!'); 
+// -> High positive score
 ```
 
 ### F. Sales Reporter Config 📊
-Sesuaikan asumsi pendapatan dan mapping intent.
+Adjust revenue assumptions and intent mapping.
 
 ```typescript
 import { SalesReporter } from 'assistant-in-a-box';
 
 const reporter = new SalesReporter(analyticsEngine, {
     currencySymbol: 'USD',
-    avgOrderValue: 50, // Nilai rata-rata order $50
-    leadConversionRate: 0.2 // Asumsi 20% lead closing
+    avgOrderValue: 50, // Average order value $50
+    leadConversionRate: 0.2 // Assume 20% lead closing
 });
 
 console.log(reporter.getHtmlSummary());
 ```
 
 ### G. Sentiment-Aware & Adaptive Response 🎭
-Bot akan menyesuaikan nada bicara berdasarkan emosi pelanggan (Positive/Negative).
+The bot adjusts its tone based on customer emotions (Positive/Negative).
 
 ```typescript
 const engine = new AssistantEngine(data, undefined, {
     sentiment: {
-        positiveWords: { 'gacor': 3 },
-        negativeWords: { 'kecewa': 3 }
+        positiveWords: { 'great': 3 },
+        negativeWords: { 'disappointed': 3 }
     },
     sentimentPrefixes: {
-        negative: ["Mohon maaf kak.", "Aduh, maaf ya."],
-        positive: ["Wah, asik! ", "Senang mendengarnya! "]
+        negative: ["We apologize for the inconvenience.", "So sorry to hear that."],
+        positive: ["That's great! ", "Glad to hear that! "]
     }
 });
 ```
 > [!TIP]
-> Jika sentimen terdeteksi **negative**, engine akan otomatis menyisipkan *Objection Prefix* simpatik sebelum memberikan jawaban untuk meredam kekhawatiran pelanggan.
+> If a **negative** sentiment is detected, the engine will automatically insert a sympathetic *Objection Prefix* before providing the answer to address customer concerns.
 
 
 ### H. Intent Orchestration (IntentOrchestrator) 🧠
-Semua deteksi intent dikelola oleh `IntentOrchestrator` yang menggabungkan AI (NLP Classifier) dengan Rule-based triggers secara hierarkis.
+All intent detection is managed by `IntentOrchestrator`, combining AI (NLP Classifier) with hierarchical Rule-based triggers.
 
 ```typescript
 import { IntentOrchestrator } from 'assistant-in-a-box';
 
 const orchestrator = new IntentOrchestrator({
-    threshold: 0.8, // Strictness AI
-    salesTriggers: { 'custom': ['pesan khusus'] }
+    threshold: 0.8, // AI Strictness
+    salesTriggers: { 'custom': ['special order'] }
 });
 
-// Digunakan secara internal oleh Engine, namun bisa diakses:
+// Used internally by the Engine, but accessible:
 const intent = engine.intentOrchestrator.detect(query, tokens, stemmedTokens);
 ```
 
 ### I. Hybrid AI (LLM) Config 🤖
-Hubungkan dengan OpenAI atau model lain (compatible endpoint).
+Connect with OpenAI or other models (compatible endpoint).
 
 ```typescript
 import { HybridAI } from 'assistant-in-a-box';
@@ -224,33 +222,36 @@ const ai = new HybridAI({
     apiKey: 'sk-xxx',
     model: 'gpt-4',
     apiUrl: 'https://api.openai.com/v1/chat/completions',
-    systemPrompt: 'Kamu adalah CS toko sepatu yang gaul.'
+    systemPrompt: 'You are a trendy shoe store customer service.'
 });
 ```
 
 ### J. Smart Reference Resolution (ContextEngine) 🧠
-Engine menggunakan `ContextEngine` sub-engine untuk memahami pertanyaan lanjutan tanpa menyebutkan subjeknya lagi (misal: "harganya berapa?").
+The engine uses the `ContextEngine` sub-engine to understand follow-up questions without re-stating the subject (e.g., "how much is it?").
 
 ```typescript
-// Akses langsung ke sub-engine
+// Direct access to sub-engine
 const engine = new AssistantEngine(data);
 const currentState = engine.context.getState(); 
 
-// Konfigurasi via Engine
+// Configuration via Engine
 const engineWithRef = new AssistantEngine(data, undefined, {
-    // Kata kunci yang memicu resolusi subjek dari history
-    referenceTriggers: ['berapa', 'harganya', 'stok', 'fitur', 'warna']
+    // Keywords that trigger subject resolution from history
+    referenceTriggers: ['how much', 'price', 'stock', 'features', 'color']
 });
 ```
 > [!TIP]
-> **Entity Locking**: Jika engine menemukan hasil dengan kepercayaan tinggi (>80%), sub-engine akan "mengunci" subjek tersebut untuk referensi percakapan berikutnya sampai user mengganti topik secara eksplisit.
+> **Entity Locking**: If the engine finds a result with high confidence (>80%), the sub-engine will "lock" that subject for subsequent conversation references until the user explicitly changes the topic.
 
 
 ### K. Relevancy & Ranking (ScoringEngine) ⚖️
-Logika penilaian hasil pencarian (Dice Coefficient, weighting, contextual boosting) dikelola oleh `ScoringEngine`. Ini memungkinkan penggantian algoritma perankingan tanpa mengubah alur pencarian.
+Search result evaluation logic (Dice Coefficient, weighting, contextual boosting) is managed by `ScoringEngine`. This allows switching ranking algorithms without changing the search flow.
 
-### L. Search Transparency (Scoring Breakdown) 🔍
-Setiap hasil pencarian kini menyertakan `scoreBreakdown` yang menjelaskan bobot penilaian:
+### L. Search Orchestration (QueryOrchestrator) 🧠
+The "brain" of the search pipeline that coordinates all sub-engines (Preprocessing -> Intent -> Scoring -> Response). It also handles *Compound Query* splitting and coordination between local/remote searches.
+
+### M. Search Transparency (Scoring Breakdown) 🔍
+Every search result now includes a `scoreBreakdown` explaining the evaluation weights:
 
 ```typescript
 const result = await engine.search("samsung galaxy");
@@ -268,38 +269,37 @@ console.log(result.scoreBreakdown);
 */
 ```
 
-### M. Performance Optimization (Memoization) ⚡
-`PreprocessingEngine` secara otomatis melakukan *memoization* (caching) pada proses *stemming* bahasa Indonesia. Hal ini mengurangi beban CPU secara signifikan saat menangani query berulang atau teks yang panjang.
-
+### N. Performance Optimization (Memoization) ⚡
+`PreprocessingEngine` automatically performs *memoization* (caching) on Indonesian text stemming. This significantly reduces CPU load when handling repeated queries or long texts.
 
 ---
 
 ## 5. Indonesian NLP Core 🇮🇩
 
-Library ini memiliki parser khusus Bahasa Indonesia bawaan.
+The library includes a built-in specialized Indonesian parser.
 
 ### Date Parser
-Mengerti ekspresi waktu natural.
-- "Besok" -> Date object (H+1)
-- "Minggu depan" -> Date object (H+7)
-- "Tanggal 15" -> Date object (Tanggal 15 bulan ini)
+Understand natural time expressions.
+- "Besok" (Tomorrow) -> Date object (T+1)
+- "Minggu depan" (Next week) -> Date object (T+7)
+- "Tanggal 15" -> Date object (15th of current month)
 
 ### Number Parser
-Mengerti format uang Indonesia.
+Understand Indonesian currency formats.
 - "2.5jt" -> 2500000
 - "500rb" -> 500000
 - "seratus ribu" -> 100000
 
 ### Sentiment Analyzer
-Mendeteksi emosi dan urgensi pelanggan.
+Detect customer emotions and urgency.
 - "Kecewa berat!!" -> Negative + Urgent
 - "Bagus banget" -> Positive + High Intensity
 
 ---
 
-## 6. Integrasi Frontend (Legacy)
+## 6. Frontend Integration (Legacy)
 
-Untuk penggunaan di browser (non-Node.js), fitur UI Controller dan Crawler masih tersedia seperti versi sebelumnya.
+For browser usage (non-Node.js), the UI Controller and Crawler features are still available.
 
 ### Quick Start (Browser)
 ```html
@@ -310,14 +310,14 @@ Untuk penggunaan di browser (non-Node.js), fitur UI Controller dan Crawler masih
 </script>
 ```
 
-Lihat bagian [Quick Start V1](#) di dokumentasi lama untuk detail UI customization.
+See [Quick Start V1](#) in legacy documentation for UI customization details.
 
 ---
 
 ## 7. Production Checklist 🚀
 
-1. [ ] **Environment**: Set `.env` untuk konfigurasi threshold sales & security.
-2. [ ] **Telemetry**: Pastikan `AnalyticsEngine` terhubung ke dashboard monitoring Anda.
-3. [ ] **Security**: Aktifkan `AIB_SECURITY_STRICT_MODE` di server production.
-4. [ ] **Caching**: Gunakan `CacheManager` jika traffic tinggi.
-5. [ ] **Minify**: Gunakan build `dist/index.js` (CJS) atau `dist/index.mjs` (ESM).
+1. [ ] **Environment**: Set `.env` for sales threshold & security configurations.
+2. [ ] **Telemetry**: Ensure `AnalyticsEngine` is connected to your monitoring dashboard.
+3. [ ] **Security**: Enable `AIB_SECURITY_STRICT_MODE` on production servers.
+4. [ ] **Caching**: Use `CacheManager` under high traffic.
+5. [ ] **Minify**: Use build `dist/index.js` (CJS) or `dist/index.mjs` (ESM).
