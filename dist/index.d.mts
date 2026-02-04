@@ -55,6 +55,10 @@ interface AssistantConfig {
     searchMode?: 'local' | 'remote';
     apiUrl?: string | string[];
     apiHeaders?: Record<string, string>;
+    autoCrawl?: boolean;
+    crawlMaxDepth?: number;
+    crawlMaxPages?: number;
+    crawlIgnorePatterns?: (string | RegExp)[];
     comparisonTriggers?: string[];
     comparisonLabels?: {
         title?: string;
@@ -120,6 +124,10 @@ declare class AssistantEngine {
     private stemmer;
     private tokenizer;
     constructor(searchData: AssistantDataItem[], FuseClass?: any, config?: AssistantConfig);
+    /**
+     * Add new data entries to the engine dynamically
+     */
+    addData(data: AssistantDataItem[]): void;
     private initFuse;
     private autoCorrect;
     private preprocess;
@@ -186,6 +194,7 @@ declare class AssistantController {
     private chatHistory;
     private interactionCount;
     constructor(searchData: AssistantDataItem[], FuseClass?: any, selectors?: UISelectors, config?: AssistantConfig);
+    private initCrawler;
     private initElements;
     private initEventListeners;
     openAssistant(): void;
@@ -203,4 +212,26 @@ declare class AssistantController {
     private loadHistory;
 }
 
-export { type AssistantConfig, AssistantController, type AssistantDataItem, AssistantEngine, type AssistantResult, type ComparisonItem, type ComparisonResult, type IntentRule, type UISelectors };
+interface CrawlerConfig {
+    maxDepth?: number;
+    maxPages?: number;
+    ignorePatterns?: (string | RegExp)[];
+    autoCrawl?: boolean;
+}
+declare class SiteCrawler {
+    private baseUrl;
+    private visited;
+    private data;
+    private config;
+    constructor(baseUrl?: string, config?: CrawlerConfig);
+    /**
+     * Start crawling from a specific path or the current location
+     */
+    crawlAll(startPath?: string): Promise<AssistantDataItem[]>;
+    private shouldIgnore;
+    private processPage;
+    private extractMainContent;
+    private extractKeywords;
+}
+
+export { type AssistantConfig, AssistantController, type AssistantDataItem, AssistantEngine, type AssistantResult, type ComparisonItem, type ComparisonResult, type IntentRule, SiteCrawler, type UISelectors };
