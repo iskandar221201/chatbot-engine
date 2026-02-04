@@ -41,5 +41,27 @@ window.ASSISTANT_CONFIG = {
     semanticMap: {
         "murah": ["hemat", "terjangkau", "ekonomis", "budget"],
         "bagus": ["terbaik", "keren", "mantap", "recommended"]
-    }
+    },
+
+    // E. Advanced Business Logic (Reference: Doc Sec 3)
+    entityDefinitions: {
+        "isPremium": ["vip", "luxury", "eksklusif", "bintang 5"],
+        "isDiscount": ["promo", "diskon", "hemat", "sale"]
+    },
+    intentRules: [
+        {
+            intent: "layanan_premium",
+            conditions: {
+                entities: ["isPremium"],
+                tokens: ["exclusive", "vvip"]
+            }
+        },
+        {
+            intent: "mencari_promo",
+            conditions: {
+                entities: ["isDiscount"],
+                tokens: ["murah", "potongan"]
+            }
+        }
+    ]
 };

@@ -13,7 +13,7 @@
     "scripts": {
         "build": "tsup index.ts --format cjs,esm,iife --dts --clean --minify --global-name Assistant",
         "dev": "tsup index.ts --format cjs,esm --watch --dts",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "vitest run"
     },
     "keywords": [
         "chatbot",
@@ -27,7 +27,9 @@
     "author": "X.ASKA",
     "license": "MIT",
     "devDependencies": {
+        "@types/node": "^25.2.0",
         "tsup": "^8.5.1",
-        "typescript": "^5.0.0"
+        "typescript": "^5.0.0",
+        "vitest": "^4.0.18"
     }
 }

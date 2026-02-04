@@ -15,7 +15,20 @@ The library is organized within the `src/` directory:
 
 ---
 
-## 2. Setting Up the Data (JSON)
+## 2. Quick Start (Demo)
+
+Untuk melihat chatbot beraksi secara instan, buka folder `demo/`:
+
+1. Buka `demo/index.html` di browser Anda.
+2. Edit `demo/sample-data.js` untuk mengganti data produk.
+3. Edit `demo/assistant-config.js` untuk mengatur trigger penjualan dan NLP.
+
+> [!NOTE]
+> Demo menggunakan format `.js` bukan `.json` agar bisa dijalankan langsung dari file sistem (tanpa perlu web server) tanpa terkena blokir CORS.
+
+---
+
+## 3. Setting Up the Data (JSON/JS)
 
 Your `data.json` must follow the `AssistantDataItem` interface.
 
@@ -229,4 +242,13 @@ window.clearSearchHistory();
 ```
 
 ---
+
+## 7. Production Checklist 🚀
+
+1. [ ] **Minify Bundle**: Jalankan `npm run build` untuk mendapatkan file `index.global.js` yang terkompresi.
+2. [ ] **Config Externalization**: Pastikan `assistant-config.js` sudah sesuai dengan branding & keyword produk Anda.
+3. [ ] **Validation**: Jalankan `npm test` untuk memastikan semua logic core berjalan normal.
+4. [ ] **Remote Mode (Optional)**: Jika data produk > 1.000, siapkan backend API dan gunakan `searchMode: 'remote'`.
+5. [ ] **Security**: Gunakan **Server-Side Proxy** jika Anda memanggil external API yang membutuhkan API Key.
+6. [ ] **Mobile Touch**: Pastikan CSS `style.css` memberikan area sentuh yang cukup besar untuk tombol input & send.
 

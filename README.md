@@ -11,35 +11,35 @@ This library transforms your static "Search Data" into a proactive sales assista
 - 🎨 **Lush UI Components**: Includes a complete chat controller with badge animations, price comparison cards, and high-visibility CTAs.
 - 🔒 **Secure-by-Design**: Integrated support for custom Auth headers and Server-Side Proxy patterns.
 
-## Getting Started
+## Quick Start (Demo)
 
-Since this is a private library, follow these steps to integrate:
+The easiest way to see the assistant in action is to check the included demo:
 
-1. **Copy Files**: Download or clone the `/library` folder into your project's assets/lib directory.
-2. **Setup Data**: Create a `search-data.json` following the `AssistantDataItem` structure.
-3. **Initialize**:
+1. Open `demo/index.html` in your browser.
+2. Explore `demo/assistant-config.js` to see how search behavior is customized.
+3. Modify `demo/sample-data.js` to inject your own product data.
 
-```typescript
-import { AssistantController } from './lib/assistant/index';
+## Installation
 
-const app = new AssistantController(myData, undefined, selectors, {
-    whatsappNumber: '62812345678',
-    salesTriggers: {
-        'beli': ['order', 'pesan', 'ambil']
-    }
-});
+```bash
+# Clone the repository
+git clone [repository-url]
 
-app.openAssistant();
+# Install dependencies (for development/testing)
+npm install
+
+# Run Unit Tests
+npm test
+
+# Build for production
+npm run build
 ```
 
 ## Why different?
 Unlike standard search bars that just show matching text, **Assistant-in-a-Box** calculates a "Business relevance" score. If a user asks *"How much is it?"*, the engine won't just look for the word "how", it will proactively identify that the user is ready to buy and push your best-priced products to the top with a "Pesan Sekarang" button.
 
 ## Documentation
-For full configuration (Phonetic mapping, Intent Rules, Proxy Setup), see [DOCUMENTATION.md](./DOCUMENTATION.md).
-
-## Contributing
-Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
+For full technical details, configuration options (Phonetic mapping, Intent Rules, Proxy Setup), and deployment checklists, see [DOCUMENTATION.md](./DOCUMENTATION.md).
 
 ## License
 MIT
