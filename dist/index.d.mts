@@ -284,6 +284,7 @@ interface AssistantConfig {
     security?: any;
     resultLimit?: number;
     subSearchJoiner?: string;
+    debugMode?: boolean;
     uiTemplates?: {
         renderUserMessage?: (text: string) => string;
         renderAssistantContainer?: (contentHTML: string, result: AssistantResult) => string;
@@ -668,6 +669,7 @@ declare class AssistantController {
     private elements;
     private chatHistory;
     private interactionCount;
+    private devModeUI;
     constructor(searchData: AssistantDataItem[], FuseClass?: any, selectors?: UISelectors, config?: AssistantConfig);
     private initCrawler;
     private initElements;
@@ -693,6 +695,11 @@ interface CrawlerConfig {
     ignorePatterns?: (string | RegExp)[];
     autoCrawl?: boolean;
     category?: string;
+    onProgress?: (progress: {
+        url: string;
+        totalIndexed: number;
+        status: string;
+    }) => void;
 }
 declare class SiteCrawler {
     private baseUrl;
@@ -703,6 +710,7 @@ declare class SiteCrawler {
     /**
      * Start crawling from a specific path or the current location
      */
+    markAsVisited(url: string): void;
     crawlAll(startPath?: string): Promise<AssistantDataItem[]>;
     private shouldIgnore;
     processDocument(doc: Document, url: string, category?: string): AssistantDataItem;

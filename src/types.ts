@@ -121,6 +121,7 @@ export interface AssistantConfig {
     security?: any;
     resultLimit?: number;
     subSearchJoiner?: string;
+    debugMode?: boolean; // Added for Dev Mode optimization
     // UI Templates for customization
     uiTemplates?: {
         renderUserMessage?: (text: string) => string;

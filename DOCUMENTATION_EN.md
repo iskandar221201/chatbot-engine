@@ -285,20 +285,22 @@ const engineCustom = new AssistantEngine(data, undefined, {
 });
 ```
 
-### O. Observability: Diagnostic Tracer 🕵️‍♂️
-Every search result now includes `diagnostics` metadata to help debug performance and logic:
+### P. Developer Mode & Diagnostic HUD 🛠️
+Enable debug mode to visualize diagnostic data directly in the browser:
 
 ```typescript
-const result = await engine.search("cheap iphone");
-console.log(result.diagnostics);
-/* Output:
-[
-  { id: 'security_check', duration: 0.2, meta: { isValid: true } },
-  { id: 'preprocessing', duration: 1.5, meta: { tokenCount: 2 } },
-  { id: 'scoring', duration: 3.2, meta: { finalCandidateCount: 15 } }
-]
-*/
+// Via Code:
+const engine = new AssistantController(data, undefined, selectors, {
+    debugMode: true // Displays the HUD overlay in the top-right corner
+});
 ```
+
+**Environment Configuration (Production Safety):**
+Use the `AIB_DEBUG_MODE` environment variable to gate this feature:
+- `AIB_DEBUG_MODE=true` (Local/Staging)
+- `AIB_DEBUG_MODE=false` (Production)
+
+The HUD displays real-time execution timings for each pipeline phase and a scoring breakdown for the top search result.
 
 ---
 

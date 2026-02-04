@@ -28,6 +28,7 @@ export class ConfigLoader {
         if (env.AIB_CURRENCY) config.currencySymbol = env.AIB_CURRENCY;
         if (env.AIB_SEARCH_MODE) config.searchMode = env.AIB_SEARCH_MODE as 'local' | 'remote';
         if (env.AIB_API_URL) config.apiUrl = env.AIB_API_URL;
+        if (env.AIB_DEBUG_MODE) config.debugMode = env.AIB_DEBUG_MODE === 'true';
 
         if (env.AIB_API_KEY) {
             config.apiHeaders = {

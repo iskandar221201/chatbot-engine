@@ -2,6 +2,7 @@ import type { AssistantDataItem, AssistantResult, AssistantConfig, UISelectors }
 import { AssistantEngine } from "./engine";
 import { SiteCrawler } from "./crawler";
 import { formatCurrency } from "./utils";
+import { DevModeUI } from "./lib/dev-mode-ui";
 
 export class AssistantController {
     private engine: AssistantEngine;
@@ -11,6 +12,7 @@ export class AssistantController {
     private elements: Record<string, HTMLElement | null> = {};
     private chatHistory: { type: 'user' | 'assistant', text: string, result?: AssistantResult }[] = [];
     private interactionCount = 0;
+    private devModeUI: DevModeUI | null = null;
 
     constructor(
         searchData: AssistantDataItem[],
@@ -21,6 +23,10 @@ export class AssistantController {
         this.engine = new AssistantEngine(searchData, FuseClass, config);
         this.selectors = selectors;
         this.config = config;
+
+        if (this.config.debugMode && typeof window !== 'undefined') {
+            this.devModeUI = new DevModeUI();
+        }
 
         this.initElements();
         this.initEventListeners();
@@ -36,7 +42,12 @@ export class AssistantController {
                 maxPages: this.config.crawlMaxPages,
                 ignorePatterns: this.config.crawlIgnorePatterns,
                 autoCrawl: this.config.autoCrawl,
-                category: this.config.crawlerCategory || 'Page'
+                category: this.config.crawlerCategory || 'Page',
+                onProgress: (p) => {
+                    if (this.devModeUI) {
+                        this.devModeUI.updateCrawlerStatus(p);
+                    }
+                }
             });
 
             // 1. Immediate Indexing: Index the current page first!
@@ -48,13 +59,25 @@ export class AssistantController {
                 currentPageData.is_recommended = true; // Give it a score boost
 
                 this.engine.addData([currentPageData]);
+                crawler.markAsVisited(window.location.href);
+
+                // REPORT TO HUD
+                if (this.devModeUI) {
+                    this.devModeUI.updateCrawlerStatus({
+                        url: window.location.pathname,
+                        totalIndexed: 1,
+                        status: 'indexed'
+                    });
+                }
+
                 console.log("Assistant: Immediate indexing complete", currentPageData);
             } catch (e) {
                 console.warn("Assistant: Immediate indexing failed", e);
             }
 
-            // 2. Start deep crawling in background
-            crawler.crawlAll().then(pages => {
+            // 2. Start deep crawling in background (Use relative start path for better local support)
+            const startPath = typeof window !== 'undefined' ? window.location.pathname : '/';
+            crawler.crawlAll(startPath).then(pages => {
                 if (pages.length > 0) {
                     this.engine.addData(pages);
                     console.log(`Assistant: Background Crawl Complete. Crawled ${pages.length} pages. Data:`, pages);
@@ -159,6 +182,12 @@ export class AssistantController {
         setTimeout(async () => {
             this.hideTyping();
             const result = await this.engine.searchWithComparison(query);
+
+            // Push to Dev Mode HUD if active
+            if (this.devModeUI) {
+                this.devModeUI.update(result);
+            }
+
             this.addAssistantMessage(query, result);
         }, 1000);
     }

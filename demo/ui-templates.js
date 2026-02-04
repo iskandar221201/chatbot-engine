@@ -32,7 +32,7 @@ window.ASSISTANT_TEMPLATES = {
     // Custom Result Card Styling
     renderResultCard: (item, idx, isPrimary) => {
         const price = item.sale_price || item.price_numeric;
-        const currency = window.app?.config?.currencySymbol || 'Rp';
+        const currency = item.currency || window.app?.config?.currencySymbol || 'Rp';
 
         return `
         <div class="relative group mt-4 animate-in fade-in zoom-in-95 duration-500" style="animation-delay: ${idx * 150}ms">

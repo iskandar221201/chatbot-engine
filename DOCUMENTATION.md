@@ -287,20 +287,22 @@ const engineCustom = new AssistantEngine(data, undefined, {
 });
 ```
 
-### O. Observability: Diagnostic Tracer 🕵️‍♂️
-Setiap hasil pencarian kini membawa data `diagnostics` untuk membantu debugging performa dan logika:
+### P. Developer Mode & Diagnostic HUD 🛠️
+Anda bisa mengaktifkan mode debug untuk memvisualisasikan data diagnostik langsung di browser:
 
 ```typescript
-const result = await engine.search("iphone murah");
-console.log(result.diagnostics);
-/* Output:
-[
-  { id: 'security_check', duration: 0.2, meta: { isValid: true } },
-  { id: 'preprocessing', duration: 1.5, meta: { tokenCount: 2 } },
-  { id: 'scoring', duration: 3.2, meta: { finalCandidateCount: 15 } }
-]
-*/
+// Via Kode:
+const engine = new AssistantController(data, undefined, selectors, {
+    debugMode: true // Menampilkan overlay HUD di pojok kanan atas
+});
 ```
+
+**Konfigurasi Environment (Production Safety):**
+Gunakan variabel env `AIB_DEBUG_MODE` untuk memastikan fitur ini mati di produksi:
+- `AIB_DEBUG_MODE=true` (Local/Staging)
+- `AIB_DEBUG_MODE=false` (Production)
+
+HUD akan menampilkan durasi proses di setiap pipa pencarian serta breakdown skor untuk hasil teratas secara *real-time*.
 
 
 ---

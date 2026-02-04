@@ -10,6 +10,10 @@ window.ASSISTANT_CONFIG = {
     autoCrawl: true,
     crawlMaxDepth: 2,
 
+    // Developer & Globalization
+    debugMode: true,
+    locale: 'id',
+
     // B. Sales Triggers (Multilingual Support)
     salesTriggers: {
         'beli': ['order', 'daftar', 'mau', 'booking', 'reservasi'],
@@ -40,31 +44,40 @@ window.ASSISTANT_CONFIG = {
     phoneticMap: {
         "umroh": ["umrah", "umro", "umroh"],
         "turki": ["turkey", "turkiye", "turky"],
-        "harga": ["hrg", "brp", "harge"]
+        "harga": ["hrg", "brp", "harge"],
+        "hp": ["handphone", "ponsel", "gadget", "smartphone"]
     },
     semanticMap: {
-        "murah": ["hemat", "terjangkau", "ekonomis", "budget"],
-        "bagus": ["terbaik", "keren", "mantap", "recommended"]
+        "murah": ["hemat", "terjangkau", "ekonomis", "budget", "cheap"],
+        "bagus": ["terbaik", "keren", "mantap", "recommended", "premium", "top"],
+        "liburan": ["wisata", "jalan-jalan", "trip", "holiday", "vacation"],
+        "elektronik": ["gadget", "komputer", "laptop", "hp", "electronics"]
     },
 
     // E. Advanced Business Logic (Reference: Doc Sec 3)
     entityDefinitions: {
-        "isPremium": ["vip", "luxury", "eksklusif", "bintang 5"],
-        "isDiscount": ["promo", "diskon", "hemat", "sale"]
+        "isPremium": ["vip", "luxury", "eksklusif", "bintang 5", "high-end", "flagship"],
+        "isDiscount": ["promo", "diskon", "hemat", "sale", "deal", "off"]
     },
     intentRules: [
         {
             intent: "layanan_premium",
             conditions: {
                 entities: ["isPremium"],
-                tokens: ["exclusive", "vvip"]
+                tokens: ["exclusive", "vvip", "titanium"]
             }
         },
         {
             intent: "mencari_promo",
             conditions: {
                 entities: ["isDiscount"],
-                tokens: ["murah", "potongan"]
+                tokens: ["murah", "potongan", "cheap"]
+            }
+        },
+        {
+            intent: "mencari_wisata",
+            conditions: {
+                tokens: ["wisata", "jalan-jalan", "travel", "trip"]
             }
         }
     ],
@@ -73,8 +86,7 @@ window.ASSISTANT_CONFIG = {
     schema: {
         PRICE: 'harga',
         PRICE_PROMO: 'harga_promo',
-        BADGE: 'badge',
-        RECOMMENDED: 'direkomendasikan',
+        BADGE: 'badge', RECOMMENDED: 'direkomendasikan',
         FEATURES: 'fitur'
     },
     featurePatterns: [

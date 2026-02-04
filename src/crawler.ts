@@ -6,6 +6,7 @@ export interface CrawlerConfig {
     ignorePatterns?: (string | RegExp)[];
     autoCrawl?: boolean;
     category?: string;
+    onProgress?: (progress: { url: string, totalIndexed: number, status: string }) => void;
 }
 
 export class SiteCrawler {
@@ -30,6 +31,10 @@ export class SiteCrawler {
     /**
      * Start crawling from a specific path or the current location
      */
+    public markAsVisited(url: string) {
+        this.visited.add(url);
+    }
+
     async crawlAll(startPath: string = '/'): Promise<AssistantDataItem[]> {
         if (!this.baseUrl) {
             console.error('SiteCrawler: Base URL not set. Cannot crawl.');
@@ -50,7 +55,14 @@ export class SiteCrawler {
                 // Check ignore patterns
                 if (this.shouldIgnore(current.url)) {
                     this.visited.add(current.url);
+                    if (this.config.onProgress) {
+                        this.config.onProgress({ url: current.url, totalIndexed: this.data.length, status: 'ignored' });
+                    }
                     continue;
+                }
+
+                if (this.config.onProgress) {
+                    this.config.onProgress({ url: current.url, totalIndexed: this.data.length, status: 'crawling' });
                 }
 
                 const result = await this.processPage(current.url);
@@ -58,6 +70,10 @@ export class SiteCrawler {
 
                 if (result) {
                     this.data.push(result.data);
+
+                    if (this.config.onProgress) {
+                        this.config.onProgress({ url: current.url, totalIndexed: this.data.length, status: 'indexed' });
+                    }
 
                     // Add links to queue
                     if (current.depth < (this.config.maxDepth || 2)) {
@@ -69,9 +85,16 @@ export class SiteCrawler {
                     }
                 }
 
-            } catch (e) {
+            } catch (e: any) {
                 console.warn(`SiteCrawler: Failed to crawl ${current.url}`, e);
                 this.visited.add(current.url);
+                if (this.config.onProgress) {
+                    let failStatus = 'failed';
+                    if (window.location.protocol === 'file:') failStatus = 'local_file_cors';
+                    else if (e.name === 'TypeError') failStatus = 'network_error';
+
+                    this.config.onProgress({ url: current.url, totalIndexed: this.data.length, status: failStatus });
+                }
             }
         }
 
