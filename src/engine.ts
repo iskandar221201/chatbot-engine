@@ -191,6 +191,8 @@ export class AssistantEngine {
             fallbackAnswer = this.config.fallbackIntentResponses?.['chat_greeting'] || "Halo! Ada yang bisa saya bantu hari ini? Anda bisa tanya tentang produk, harga, atau promo kami.";
         } else if (intent === 'chat_thanks') {
             fallbackAnswer = this.config.fallbackIntentResponses?.['chat_thanks'] || "Sama-sama! Senang bisa membantu. Ada lagi yang ingin ditanyakan?";
+        } else if (intent === 'chat_contact') {
+            fallbackAnswer = this.config.fallbackIntentResponses?.['chat_contact'] || "Anda bisa menghubungi kami melalui WhatsApp atau Email. Ingin saya hubungkan sekarang?";
         }
 
         const topMatches = finalResults
@@ -317,6 +319,13 @@ export class AssistantEngine {
 
         for (const [intent, tokens] of Object.entries(chatTriggers)) {
             if (tokens.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) return `chat_${intent}`;
+        }
+
+        // Contact triggers (WhatsApp, Email, etc.)
+        const defaultContactTriggers = ['kontak', 'contact', 'whatsapp', 'wa', 'email', 'telepon', 'phone', 'call', 'hubungi'];
+        const contactTriggers = [...defaultContactTriggers, ...(this.config.contactTriggers || [])];
+        if (contactTriggers.some(t => stemmedTokens.includes(t) || processed.tokens.includes(t))) {
+            return 'chat_contact';
         }
 
         if (!this.config.intentRules) return 'fuzzy';

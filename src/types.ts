@@ -55,6 +55,7 @@ export interface AssistantConfig {
     stemmingSuffixes?: string[];
     salesTriggers?: Record<string, string[]>;
     conversationTriggers?: Record<string, string[]>;
+    contactTriggers?: string[];
     fallbackIntentResponses?: Record<string, string>;
     searchMode?: 'local' | 'remote';
     apiUrl?: string | string[];
