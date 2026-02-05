@@ -7,6 +7,10 @@ export interface CrawlerConfig {
     autoCrawl?: boolean;
     category?: string;
     onProgress?: (progress: { url: string, totalIndexed: number, status: string }) => void;
+    /** Elements to exclude from indexing (e.g., 'button, nav, footer') */
+    excludeSelectors?: string;
+    /** If specified, only content within these selectors will be indexed */
+    contentSelectors?: string;
 }
 
 export class SiteCrawler {
@@ -150,11 +154,33 @@ export class SiteCrawler {
     }
 
     private extractMainContent(doc: Document): string {
-        // Remove scripts, styles, and other non-content elements
+        // Create a clone to avoid mutating the original document
         const clone = doc.body.cloneNode(true) as HTMLElement;
-        const toRemove = clone.querySelectorAll('script, style, noscript, iframe, header, footer, nav');
+
+        // 1. Remove non-content elements (default set)
+        const defaultExclude = 'script, style, noscript, iframe, header, footer, nav, button, input, select, textarea, form, svg, canvas, [role="button"], [role="navigation"]';
+        const toRemove = clone.querySelectorAll(defaultExclude);
         toRemove.forEach(el => el.remove());
 
+        // 2. Apply custom exclude selectors if provided
+        if (this.config.excludeSelectors) {
+            const customExclude = clone.querySelectorAll(this.config.excludeSelectors);
+            customExclude.forEach(el => el.remove());
+        }
+
+        // 3. Focus on content selectors if provided
+        if (this.config.contentSelectors) {
+            const contentElements = clone.querySelectorAll(this.config.contentSelectors);
+            if (contentElements.length > 0) {
+                return Array.from(contentElements)
+                    .map(el => (el as HTMLElement).innerText)
+                    .join(' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+        }
+
+        // 4. Default: Get all remaining text content
         return clone.innerText.replace(/\s+/g, ' ').trim();
     }
 

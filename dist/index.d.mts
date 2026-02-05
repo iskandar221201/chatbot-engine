@@ -700,6 +700,10 @@ interface CrawlerConfig {
         totalIndexed: number;
         status: string;
     }) => void;
+    /** Elements to exclude from indexing (e.g., 'button, nav, footer') */
+    excludeSelectors?: string;
+    /** If specified, only content within these selectors will be indexed */
+    contentSelectors?: string;
 }
 declare class SiteCrawler {
     private baseUrl;

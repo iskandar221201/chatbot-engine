@@ -17,7 +17,29 @@ describe('SiteCrawler', () => {
     global.DOMParser = MockDOMParser as any;
 
     // Helper to create mock DOM
-    const createMockDoc = (title: string, content: string, links: string[] = []) => {
+    const createMockDoc = (title: string, content: string, links: string[] = [], options: { html?: string } = {}) => {
+        const body = {
+            cloneNode: () => {
+                const div = {
+                    innerText: content,
+                    querySelectorAll: (sel: string) => {
+                        // Very simple mock for selector-based removal
+                        if (options.html) {
+                            if (sel.includes('button')) {
+                                return options.html.includes('<button') ? [{ remove: () => { } }] : [];
+                            }
+                            if (sel.includes('nav')) {
+                                return options.html.includes('<nav') ? [{ remove: () => { } }] : [];
+                            }
+                        }
+                        return [];
+                    },
+                    remove: () => { }
+                };
+                return div;
+            }
+        };
+
         return {
             querySelector: (sel: string) => {
                 if (sel === 'title') return { textContent: title };
@@ -29,16 +51,9 @@ describe('SiteCrawler', () => {
                 if (sel === 'a[href]') {
                     return links.map(href => ({ getAttribute: () => href }));
                 }
-                if (sel.includes('script')) return []; // Mock for remove logic
                 return [];
             },
-            body: {
-                cloneNode: () => ({
-                    querySelectorAll: () => [],
-                    innerText: content,
-                    remove: () => { }
-                })
-            }
+            body
         };
     };
 
@@ -134,6 +149,57 @@ describe('SiteCrawler', () => {
         const results = await crawler.crawlAll('/');
 
         expect(results).toHaveLength(0);
+    });
+
+    it('should exclude noise like buttons and nav by default', async () => {
+        const htmlWithNoise = '<html><body><nav>Menu</nav><div>Main Content</div><button>Click Me</button></body></html>';
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            headers: { get: () => 'text/html' },
+            text: async () => htmlWithNoise
+        });
+
+        // The mock implementation of extractMainContent in the test needs to be careful.
+        // In the real crawler.ts, it clones and removes.
+        // We've updated createMockDoc to return a mock that handles querySelectorAll for noise.
+        const mockDoc = createMockDoc('Test', 'Main Content', [], { html: htmlWithNoise });
+        mockParseFromString.mockReturnValueOnce(mockDoc);
+
+        const results = await crawler.crawlAll('/');
+        expect(results[0].content).toBe('Main Content');
+    });
+
+    it('should support custom contentSelectors', async () => {
+        crawler = new SiteCrawler('https://example.com', {
+            contentSelectors: '.article-body'
+        });
+
+        const html = '<html><body><div class="sidebar">Ads</div><div class="article-body">Real Content</div></body></html>';
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            headers: { get: () => 'text/html' },
+            text: async () => html
+        });
+
+        // Mocking the behavior where only .article-body is picked
+        const mockDoc = {
+            ...createMockDoc('Test', 'Ads Real Content'),
+            body: {
+                cloneNode: () => ({
+                    querySelectorAll: (sel: string) => {
+                        if (sel === '.article-body') {
+                            return [{ innerText: 'Real Content' }];
+                        }
+                        return [];
+                    },
+                    remove: () => { }
+                })
+            }
+        };
+        mockParseFromString.mockReturnValueOnce(mockDoc);
+
+        const results = await crawler.crawlAll('/');
+        expect(results[0].content).toBe('Real Content');
     });
 
 });
