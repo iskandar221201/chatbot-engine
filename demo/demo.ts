@@ -60,7 +60,7 @@ const engine = new AssistantEngine(mockDocData, undefined, config);
     console.log("\n--- Test 4: Sentiment Awareness (Negative) ---");
     const res4 = await engine.search("dokumentasinya membingungkan saya kecewa");
     console.log("Intent:", res4.intent);
-    console.log("Answer with Prefix:", res4.answer.substring(0, 50) + "...");
+    console.log("Answer with Prefix:", res4.answer?.substring(0, 50) + "...");
 
     console.log("\n--- Query 5: 'berapa biaya lisensinya?' (Sales Intent: Harga) ---");
     const res5 = await engine.search("berapa biaya lisensinya?");

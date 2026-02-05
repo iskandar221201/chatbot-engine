@@ -110,6 +110,13 @@ window.ASSISTANT_CONFIG = {
         /(?:•|✓|★)([^•✓★\n]+)/g
     ],
 
+    attributeLabels: {
+        "kecepatan": "Latensi / Kecepatan",
+        "koneksi": "Kebutuhan Koneksi",
+        "keamanan": "Privasi Data",
+        "biaya": "Skema Biaya"
+    },
+
     // G. Sentiment & Empathy (New)
     sentimentPrefixes: {
         negative: [

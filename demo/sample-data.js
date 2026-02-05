@@ -3,23 +3,6 @@ window.SAMPLE_PRODUCTS = [
     {
         "title": "Arsitektur Umum",
         "category": "Architecture",
-        "description": "Framework enterprise modular yang terdiri dari Type System, Engine Layer, Sales Intelligence, dan Enterprise Layer.",
-        "answer": "Arsitektur kami modular kak, ada Engine Layer untuk NLP, Sales Intelligence untuk konversi, dan Enterprise Layer untuk skalabilitas.",
-        "url": "#",
-        "keywords": ["arsitektur", "struktur", "folder", "layer", "komponen", "modular", "framework", "sistem", "build", "core"]
-    },
-    {
-        "title": "AssistantEngine (src/engine.ts)",
-        "category": "Core",
-        "description": "Orchestrator pusat yang mengoordinasikan semua sub-engine untuk memproses query.",
-        "answer": "AssistantEngine itu otak utamanya. Dia yang manggil-manggil sub-engine lain buat kelola chat kamu sampe jadi jawaban.",
-        "url": "#",
-        "keywords": ["engine", "pencarian", "orchestrator", "pusat", "core", "utama", "search"]
-    },
-    {
-        "title": "QueryOrchestrator",
-        "category": "Sub-Engine",
-        "description": "Menangani normalisasi query, deteksi entitas, dan pengayaan kata kunci sebelum pencarian.",
         "answer": "QueryOrchestrator bertugas benerin chat kamu yang typo, deteksi apa yang kamu cari, dan nambahin keyword relevan otomatis.",
         "url": "#",
         "keywords": ["query", "orchestrator", "normalisasi", "entitas", "entity", "keyword", "enrichment", "pencarian"]
@@ -393,5 +376,21 @@ window.SAMPLE_PRODUCTS = [
         "answer": "Bot paham kalo kamu lagi semangat! Dia bisa deteksi 'high intensity positive sentiment' supaya jawabannya makin asik.",
         "url": "#",
         "keywords": ["semangat", "seru", "capslock", "asik", "banget", "intensitas", "gembira"]
+    },
+    {
+        "title": "AI Generatif / LLM (GPT-4/Claude)",
+        "category": "Alternative",
+        "price_numeric": 300000,
+        "currency": "IDR",
+        "description": "Kecerdasan buatan berbasis Large Language Model yang sangat cerdas namun butuh internet dan biaya token.",
+        "answer": "Kalo dibandingin sama LLM beneran (GPT-4), mereka emang lebih pinter jawab apa aja, tapi butuh koneksi internet terus dan biaya tokennya lumayan mahal kak.",
+        "url": "#",
+        "keywords": ["ai beneran", "gpt", "claude", "llm", "generatif", "online", "mahal", "pintar"],
+        "attributes": {
+            "kecepatan": "1500ms - 3000ms",
+            "koneksi": "Online (Internet)",
+            "keamanan": "Data ke Cloud",
+            "biaya": "Berbayar (Token/Subs)"
+        }
     }
 ];

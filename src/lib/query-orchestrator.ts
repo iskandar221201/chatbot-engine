@@ -25,7 +25,7 @@ export class QueryOrchestrator {
         analytics: any;
         middleware: any;
         salesPsychology: any;
-        sentiment: any; // Added sentiment engine
+        sentiment: any;
     };
     private config: AssistantConfig;
     private searchData: AssistantDataItem[];
@@ -85,7 +85,6 @@ export class QueryOrchestrator {
         tracer.stop('sentiment_analysis');
 
         // 5. Compound Parsing
-        // ... (Compound parsing logic remains same, but we pass tracer to executeSubSearch)
         let conjunctions = this.config.conjunctions || DEFAULT_CONJUNCTIONS;
         if (Array.isArray(conjunctions)) {
             const escaped = conjunctions.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -168,7 +167,7 @@ export class QueryOrchestrator {
     public async executeSubSearch(query: string, tracer: DiagnosticTracer): Promise<AssistantResult> {
         const limit = this.config.resultLimit || DEFAULT_UI_CONFIG.resultLimit;
 
-        // 1. Remote Search Check (Skipping tracer for remote for now)
+        // 1. Remote Search Check
         if (this.config.searchMode === 'remote' && this.config.apiUrl) {
             const remoteResult = await this.handleRemoteSearch(query, { score: 0, label: 'neutral' }, limit);
             if (remoteResult) return remoteResult;
@@ -209,7 +208,7 @@ export class QueryOrchestrator {
         const intent = this.engines.intent.detect(processed.tokens.join(' '), processed.tokens, stemmedTokens);
         tracer.stop('intent_detection', { intent });
 
-        // 6. Ranking (ScoringEngine)
+        // 6. Ranking
         tracer.start('scoring');
         const finalResults = candidates.map(c => {
             const { score, breakdown } = this.engines.scoring.calculate(c.item, processed, c.fuseScore, intent, contextState);
@@ -257,7 +256,7 @@ export class QueryOrchestrator {
         return {
             ...finalResult,
             answer: answer,
-            diagnostics: tracer.getEvents() // Final snapshot
+            diagnostics: tracer.getEvents()
         };
     }
 
