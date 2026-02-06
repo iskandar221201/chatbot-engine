@@ -109,9 +109,9 @@ export interface AssistantConfig {
     locale?: string;
     currencySymbol?: string;
     answerTemplates?: {
-        price?: string;
-        features?: string;
-        noResults?: string;
+        price?: string | string[];
+        features?: string | string[];
+        noResults?: string | string[];
     };
     sentimentPrefixes?: {
         negative?: string[];

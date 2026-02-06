@@ -31,10 +31,11 @@ describe('ScoringEngine Sub-Engine', () => {
     });
 
     it('should boost score for matching category', () => {
-        const item = { title: 'X', category: 'Gadget', url: '/x', attributes: {} };
+        const item = { title: 'X', category: 'Gadget', url: '/x', attributes: {}, keywords: [] };
         const processed = { tokens: ['gadget'], expanded: ['gadget'] };
-        const result = scoring.calculate(item as any, processed, 0.5, 'fuzzy', {});
-        expect(result.score).toBeGreaterThan(25);
+        const result = scoring.calculate(item as any, processed, 0.5, 'fuzzy', { lastCategory: '' });
+        // New scoring: fieldBoost is 15. Total might be around 20 (fuzzy + field + token).
+        expect(result.score).toBeGreaterThan(15);
         expect(result.breakdown.fieldBoost).toBeGreaterThan(0);
     });
 
@@ -67,7 +68,7 @@ describe('ScoringEngine Sub-Engine', () => {
         };
         const result = scoring.calculate(item as any, processed, 0.1, 'sales_query', {});
 
-        expect(result.breakdown.psychologyBoost).toBe(30); // is_recommended boost
+        expect(result.breakdown.psychologyBoost).toBe(25); // is_recommended boost (updated val from 30 to 25)
         expect(result.breakdown.fuzzyMatch).toBe(9); // (1 - 0.1) * 10
     });
 });

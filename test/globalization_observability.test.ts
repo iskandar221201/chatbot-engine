@@ -45,9 +45,12 @@ describe('Globalization & Observability Integration', () => {
         expect(scoring!.meta?.finalCandidateCount).toBeGreaterThan(0);
     });
 
-    it('should correctly switch providers manually', () => {
+    it('should correctly switch providers manually', async () => {
         const idProvider = new IndonesianProvider();
         const enProvider = new EnglishProvider();
+
+        // Indonesian provider needs async init for lazy-loaded Sastrawi
+        await idProvider.init();
 
         expect(idProvider.stem('makanan')).toBe('makan');
         expect(enProvider.stem('running')).toBe('run');

@@ -39,7 +39,11 @@ describe('PreprocessingEngine Sub-Engine', () => {
         expect(result.tokens).toContain('samsung');
     });
 
-    it('should perform Indonesian stemming (Sastrawi integration)', () => {
+    it('should perform Indonesian stemming (Sastrawi integration)', async () => {
+        // Initialize the lazy-loaded Sastrawi stemmer
+        const provider = (prepro as any).provider;
+        if (provider?.init) await provider.init();
+
         const stem = prepro.stem('menjual');
         expect(stem).toBe('jual');
 

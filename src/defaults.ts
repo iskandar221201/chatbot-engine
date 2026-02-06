@@ -106,9 +106,22 @@ export const DEFAULT_UI_CONFIG = {
     locale: 'id-ID',
     currencySymbol: 'Rp',
     answerTemplates: {
-        price: 'Tentu! Harga {title} saat ini adalah {currency} {price}. Menarik banget kan?',
-        features: 'Ini dia beberapa keunggulan dari {title}: {features}. Gimana, sesuai kebutuhan Anda?',
-        noResults: 'Aduh, maaf banget ya, saya belum nemu info soal itu. Mungkin bisa coba tanya yang lain?'
+        price: [
+            'Tentu! Harga {title} saat ini adalah {currency} {price}. Menarik banget kan?',
+            'Untuk {title}, harganya cuma {currency} {price} lho kak.',
+            'Cuma {currency} {price} aja buat bawa pulang {title}.',
+            'Saat ini {title} dibanderol {currency} {price}. Worth it banget!'
+        ],
+        features: [
+            'Ini dia keunggulan {title}: {features}. Gimana, sesuai kebutuhan?',
+            '{title} punya fitur keren: {features}. Tertarik?',
+            'Spesifikasi {title} meliputi {features}. Mantap kan?'
+        ],
+        noResults: [
+            'Aduh, maaf banget ya, saya belum nemu info soal itu. Mungkin bisa coba kata kunci lain?',
+            'Wah saya belum punya data soal itu kak. Coba tanya yang lain ya?',
+            'Mohon maaf, informasi tersebut belum tersedia di database saya.'
+        ]
     },
     sentimentPrefixes: {
         negative: [

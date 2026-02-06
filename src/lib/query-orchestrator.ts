@@ -26,6 +26,7 @@ export class QueryOrchestrator {
         middleware: any;
         salesPsychology: any;
         sentiment: any;
+        hybridAI: any;
     };
     private config: AssistantConfig;
     private searchData: AssistantDataItem[];
@@ -225,12 +226,38 @@ export class QueryOrchestrator {
             .map(r => r.item)
             .slice(0, limit);
 
+        // --- NEW: Intelligent Fallback ---
+        // If no good local results found (low confidence) and not a conversational intent
+        const confidence = finalResults.length > 0 ? Math.min(Math.round(finalResults[0].score * 2), 100) : 0;
+
+        let answer = "";
+        let finalIntent = intent;
+        let finalConfidence = isConversational ? 80 : confidence;
+
+        if (topMatches.length === 0 && !isConversational && this.engines.hybridAI) {
+            tracer.start('llm_fallback');
+            // Try to get answer from LLM
+            const llmAnswer = await this.engines.hybridAI.fallback(query, {
+                systemPrompt: "You are a helpful assistant for a website. Answer based on general knowledge if product not found.",
+                context: contextState
+            });
+
+            if (llmAnswer) {
+                answer = llmAnswer;
+                finalIntent = 'generative_fallback';
+                finalConfidence = 70; // Medium confidence for AI answers
+                tracer.stop('llm_fallback', { success: true });
+            } else {
+                tracer.stop('llm_fallback', { success: false });
+            }
+        }
+
         // 7. Context & Sentiment Wrap
         const finalResult: AssistantResult = {
             results: topMatches,
-            intent: intent,
+            intent: finalIntent,
             entities: processed.entities,
-            confidence: finalResults.length > 0 ? Math.min(Math.round(finalResults[0].score * 2), 100) : (isConversational ? 80 : 0),
+            confidence: finalConfidence,
             sentiment: {
                 score: sentiment.score,
                 label: sentiment.label,
@@ -243,15 +270,17 @@ export class QueryOrchestrator {
 
         this.engines.context.update(finalResult);
 
-        // 8. Response Composition
-        tracer.start('response_composition');
-        const answer = this.engines.response.compose(
-            finalResult,
-            intent,
-            isConversational,
-            (item: AssistantDataItem) => this.engines.prepro.extractAttributes(item)
-        );
-        tracer.stop('response_composition');
+        // 8. Response Composition (Only if local search or conversational, not LLM fallbacked)
+        if (!answer) {
+            tracer.start('response_composition');
+            answer = this.engines.response.compose(
+                finalResult,
+                intent, // Use original intent for template matching
+                isConversational,
+                (item: AssistantDataItem) => this.engines.prepro.extractAttributes(item)
+            );
+            tracer.stop('response_composition');
+        }
 
         return {
             ...finalResult,

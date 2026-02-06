@@ -1,9 +1,10 @@
 /**
  * Language Provider System
  * Abstracting linguistic logic (Normalization, Stemming, Stopwords) per language.
+ * 
+ * OPTIMIZATION: Sastrawi (305KB) is lazy-loaded only when Indonesian stemming is used.
  */
 
-import { Stemmer } from "./sastrawi";
 import { DEFAULT_STOP_WORDS } from "../defaults";
 
 export interface ILanguageProvider {
@@ -11,21 +12,70 @@ export interface ILanguageProvider {
     normalize(text: string): string;
     stem(word: string): string;
     getStopWords(): string[];
+    /** Optional: Check if stemmer is ready (for async initialization) */
+    isReady?: () => boolean;
+    /** Optional: Initialize stemmer async */
+    init?: () => Promise<void>;
+}
+
+// Lazy-loaded Stemmer singleton
+let _stemmerInstance: any = null;
+let _stemmerLoading: Promise<any> | null = null;
+
+async function getStemmer(): Promise<any> {
+    if (_stemmerInstance) return _stemmerInstance;
+    if (_stemmerLoading) return _stemmerLoading;
+
+    _stemmerLoading = import("./sastrawi").then(module => {
+        _stemmerInstance = new module.Stemmer();
+        return _stemmerInstance;
+    });
+
+    return _stemmerLoading;
 }
 
 /**
  * Indonesian Provider (Default)
- * Uses Sastrawi for stemming.
+ * Uses Sastrawi for stemming with lazy loading.
+ * 
+ * NOTE: For best performance, call init() once before first search.
+ * If not initialized, stem() will return the original word until ready.
  */
 export class IndonesianProvider implements ILanguageProvider {
     public locale = 'id';
-    private stemmer = new Stemmer();
+    private stemmer: any = null;
+    private initPromise: Promise<void> | null = null;
 
     public normalize(text: string): string {
         return text.toLowerCase().replace(/[^\w\s]/g, '');
     }
 
+    /**
+     * Initialize the stemmer asynchronously.
+     * Call this once during app startup for best performance.
+     */
+    public async init(): Promise<void> {
+        if (this.stemmer) return;
+        if (this.initPromise) return this.initPromise;
+
+        this.initPromise = getStemmer().then(s => {
+            this.stemmer = s;
+        });
+
+        return this.initPromise;
+    }
+
+    public isReady(): boolean {
+        return this.stemmer !== null;
+    }
+
     public stem(word: string): string {
+        // If stemmer not loaded yet, trigger async load and return original word
+        if (!this.stemmer) {
+            // Fire-and-forget initialization for next call
+            this.init();
+            return word;
+        }
         return this.stemmer.stem(word);
     }
 

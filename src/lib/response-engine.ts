@@ -32,6 +32,9 @@ export class ResponseEngine {
     /**
      * Compose the final answer string based on the result and context
      */
+    /**
+     * Compose the final answer string based on the result and context
+     */
     public compose(
         result: AssistantResult,
         intent: string,
@@ -44,7 +47,7 @@ export class ResponseEngine {
 
         let answer = topMatches[0]?.answer || "";
 
-        // 1. Template-based Answer Generation
+        // 1. Template-based Answer Generation (Rule-Based & Variational)
         if (topMatches.length > 0) {
             const topItem = topMatches[0];
             const attributes = extractAttributes(topItem);
@@ -52,7 +55,8 @@ export class ResponseEngine {
             if (intent === 'sales_harga') {
                 const harga = topItem.sale_price || topItem.price_numeric;
                 if (harga) {
-                    answer = (templates.price || "")
+                    const template = this.getTemplate(templates.price);
+                    answer = template
                         .replace('{title}', topItem.title)
                         .replace('{currency}', '')
                         .replace('{price}', formatCurrency(
@@ -65,7 +69,12 @@ export class ResponseEngine {
             } else if (intent === 'sales_fitur' || intent === 'fuzzy_fitur') {
                 const schema = { ...DEFAULT_SCHEMA, ...this.config.schema };
                 const fitur = attributes[schema.FEATURES!] || topItem.description;
-                answer = (templates.features || "").replace('{title}', topItem.title).replace('{features}', fitur);
+                const template = this.getTemplate(templates.features);
+                answer = template.replace('{title}', topItem.title).replace('{features}', fitur);
+            } else if (!answer) {
+                // --- Dynamic Sentence Assembly (Natural Response Fallback) ---
+                // If no specific intent matched or no manual answer, assemble a natural description
+                answer = this.assembleDescription(topItem, attributes);
             }
         }
 
@@ -75,11 +84,13 @@ export class ResponseEngine {
             if (intent === 'chat_greeting') answer = fallback['chat_greeting']!;
             else if (intent === 'chat_thanks') answer = fallback['chat_thanks']!;
             else if (intent === 'chat_contact') answer = fallback['chat_contact']!;
-            else if (!isConversational && topMatches.length === 0) answer = templates.noResults!;
+            else if (!isConversational && topMatches.length === 0) {
+                answer = this.getTemplate(templates.noResults!);
+            }
         }
 
         // 3. Adaptive Response Tuning (Tone & Psychology)
-        if (answer && answer !== templates.noResults) {
+        if (answer && !this.isNoResult(answer)) {
             if (sentiment) {
                 const prefixesConfig = { ...DEFAULT_UI_CONFIG.sentimentPrefixes, ...this.config.sentimentPrefixes };
 
@@ -104,6 +115,51 @@ export class ResponseEngine {
         }
 
         return answer;
+    }
+
+    private getTemplate(template: string | string[] | undefined): string {
+        if (!template) return "";
+        if (Array.isArray(template)) {
+            return template[Math.floor(Math.random() * template.length)];
+        }
+        return template;
+    }
+
+    private isNoResult(text: string): boolean {
+        const defaults = DEFAULT_UI_CONFIG.answerTemplates.noResults;
+        if (Array.isArray(defaults)) return defaults.includes(text);
+        return text === defaults;
+    }
+
+    /**
+     * Dynamically assemble a natural description sentence from data items
+     */
+    private assembleDescription(item: AssistantDataItem, attributes: Record<string, string>): string {
+        // Example: "Samsung S23 adalah Smartphone canggih dengan harga Rp 15jt. Fitur andalannya adalah kamera 200MP."
+        const currency = this.config.currencySymbol || DEFAULT_UI_CONFIG.currencySymbol!;
+        const locale = this.config.locale || DEFAULT_UI_CONFIG.locale!;
+
+        let sent = `**${item.title}**`;
+
+        if (item.category) {
+            sent += ` adalah ${item.category}`;
+        }
+
+        const price = item.sale_price || item.price_numeric;
+        if (price) {
+            sent += ` yang tersedia dengan harga ${formatCurrency(price, currency, locale)}`;
+        }
+
+        const schema = { ...DEFAULT_SCHEMA, ...this.config.schema };
+        const fitur = attributes[schema.FEATURES!] || ((item.description && item.description.length < 100) ? item.description : null);
+
+        if (fitur) {
+            sent += `. Produk ini memiliki keunggulan berupa ${fitur}.`;
+        } else {
+            sent += `.`;
+        }
+
+        return sent;
     }
 }
 

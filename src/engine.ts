@@ -29,6 +29,7 @@ export class AssistantEngine {
     private Fuse: any;
     private fuse: any;
     private config: AssistantConfig;
+    private _languageProvider: any;
 
     // Sub-Engines
     public analytics: AnalyticsEngine;
@@ -84,9 +85,10 @@ export class AssistantEngine {
             currencySymbol: this.config.currencySymbol,
             schema: this.config.schema
         }, this.salesPsychology);
-        const provider = this.config.locale === 'en' ? new EnglishProvider() : new IndonesianProvider();
+        // Store provider reference for lazy init
+        this._languageProvider = this.config.locale === 'en' ? new EnglishProvider() : new IndonesianProvider();
         this.prepro = new PreprocessingEngine({
-            languageProvider: provider,
+            languageProvider: this._languageProvider,
             phoneticMap: this.config.phoneticMap,
             stopWords: this.config.stopWords,
             semanticMap: this.config.semanticMap,
@@ -137,13 +139,36 @@ export class AssistantEngine {
                     { name: "title", weight: 0.8 },
                     { name: "keywords", weight: 0.5 },
                     { name: "description", weight: 0.2 },
-                    { name: "content", weight: 0.1 },
+                    // OPTIMIZATION: Removed 'content' - too heavy for fuzzy search
                 ],
                 threshold: 0.45,
                 includeScore: true,
                 useExtendedSearch: true,
+                ignoreLocation: true, // Faster for short queries
+                minMatchCharLength: 2, // Skip single char matches
             });
         }
+    }
+
+    /**
+     * Initialize async resources (language stemmer, etc.)
+     * Call this once at startup for optimal first-search performance.
+     * Not required - resources load on-demand if not initialized.
+     */
+    public async init(): Promise<void> {
+        if (this._languageProvider?.init) {
+            await this._languageProvider.init();
+        }
+    }
+
+    /**
+     * Check if async resources are ready
+     */
+    public isReady(): boolean {
+        if (this._languageProvider?.isReady) {
+            return this._languageProvider.isReady();
+        }
+        return true; // English provider is always ready
     }
 
     /**

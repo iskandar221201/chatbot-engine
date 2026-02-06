@@ -272,9 +272,9 @@ interface AssistantConfig {
     locale?: string;
     currencySymbol?: string;
     answerTemplates?: {
-        price?: string;
-        features?: string;
-        noResults?: string;
+        price?: string | string[];
+        features?: string | string[];
+        noResults?: string | string[];
     };
     sentimentPrefixes?: {
         negative?: string[];
@@ -385,6 +385,11 @@ declare class IntentOrchestrator {
  * Manages conversation state, history, and anaphora resolution.
  */
 
+interface ContextConfig {
+    referenceTriggers?: string[];
+    ttl?: number;
+    maxInteractions?: number;
+}
 interface ContextState {
     lastCategory: string | null;
     lastItemId: string | null;
@@ -392,10 +397,18 @@ interface ContextState {
     interactionCount: number;
     lockedEntityId: string | null;
 }
+interface ContextState {
+    lastCategory: string | null;
+    lastItemId: string | null;
+    detectedEntities: Set<string>;
+    interactionCount: number;
+    lockedEntityId: string | null;
+    lastActive: number;
+}
 declare class ContextEngine {
     private state;
-    private referenceTriggers;
-    constructor(referenceTriggers?: string[]);
+    private config;
+    constructor(config?: ContextConfig | string[]);
     /**
      * Resolve anaphora (references to previous subjects) in a query
      */
@@ -404,6 +417,10 @@ declare class ContextEngine {
      * Update state based on the latest result
      */
     update(result: AssistantResult): void;
+    /**
+     * Prune stale state based on TTL
+     */
+    private prune;
     /**
      * Get the current state summary
      */
@@ -434,18 +451,33 @@ declare class ResponseEngine {
     /**
      * Compose the final answer string based on the result and context
      */
+    /**
+     * Compose the final answer string based on the result and context
+     */
     compose(result: AssistantResult, intent: string, isConversational: boolean, extractAttributes: (item: AssistantDataItem) => Record<string, string>): string;
+    private getTemplate;
+    private isNoResult;
+    /**
+     * Dynamically assemble a natural description sentence from data items
+     */
+    private assembleDescription;
 }
 
 /**
  * Language Provider System
  * Abstracting linguistic logic (Normalization, Stemming, Stopwords) per language.
+ *
+ * OPTIMIZATION: Sastrawi (305KB) is lazy-loaded only when Indonesian stemming is used.
  */
 interface ILanguageProvider {
     locale: string;
     normalize(text: string): string;
     stem(word: string): string;
     getStopWords(): string[];
+    /** Optional: Check if stemmer is ready (for async initialization) */
+    isReady?: () => boolean;
+    /** Optional: Initialize stemmer async */
+    init?: () => Promise<void>;
 }
 
 interface PreprocessingConfig {
@@ -506,6 +538,7 @@ declare class ScoringEngine {
     constructor(config?: ScoringConfig);
     /**
      * Main scoring function for a single item
+     * Enhanced with better relevance differentiation
      */
     calculate(item: AssistantDataItem, processed: any, fuseScore: number, intent: string, contextState: any): {
         score: number;
@@ -630,6 +663,7 @@ declare class AssistantEngine {
     private Fuse;
     private fuse;
     private config;
+    private _languageProvider;
     analytics: AnalyticsEngine;
     middleware: MiddlewareManager;
     salesPsychology: SalesPsychology;
@@ -645,6 +679,16 @@ declare class AssistantEngine {
     constructor(searchData: AssistantDataItem[], FuseClass?: any, config?: AssistantConfig);
     addData(data: AssistantDataItem[]): void;
     private initFuse;
+    /**
+     * Initialize async resources (language stemmer, etc.)
+     * Call this once at startup for optimal first-search performance.
+     * Not required - resources load on-demand if not initialized.
+     */
+    init(): Promise<void>;
+    /**
+     * Check if async resources are ready
+     */
+    isReady(): boolean;
     /**
      * Primary Search API
      */

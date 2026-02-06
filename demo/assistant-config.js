@@ -14,6 +14,24 @@ window.ASSISTANT_CONFIG = {
     debugMode: true,
     locale: 'id',
 
+    // H. Intelligent Features (New in v1.2.0)
+    // Uncomment and add API Key to enable LLM Fallback
+    /*
+    hybridAI: {
+        apiKey: "sk-...", // Your OpenAI Key here
+        model: "gpt-3.5-turbo"
+    },
+    */
+
+    // Custom Response Variations
+    answerTemplates: {
+        price: [
+            'Harganya {currency} {price} kak.',
+            'Cuma {currency} {price} aja kok.',
+            'Best price banget nih: {currency} {price}'
+        ]
+    },
+
     // B. Sales Triggers (Multilingual Support)
     salesTriggers: {
         'beli': ['order', 'pakai', 'implementasi', 'integrasi', 'unduh'],
